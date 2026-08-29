@@ -69,3 +69,74 @@ def init_db():
 
 def hash_pw(pw: str) -> str:
     salt = os.environ.get("PW_SALT", "eventkhujo_salt_2026")
+    print(hashlib.sha256(f"{salt}:{pw}".encode()).hexdigest())
+    return hashlib.sha256(f"{salt}:{pw}".encode()).hexdigest()
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return jsonify({"error": "unauthorized"}), 401
+        return f(*args, **kwargs)
+    return wrapper
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session or session.get("role") != "admin":
+            return jsonify({"error": "forbidden"}), 403
+        return f(*args, **kwargs)
+    return wrapper
+
+def validate_event(d: dict) -> str | None:
+    if not d.get("title", "").strip():
+        return "title is required"
+    if not d.get("description", "").strip():
+        return "description is required"
+    if not d.get("date"):
+        return "date is required"
+    if not d.get("location", "").strip():
+        return "location is required"
+    try:
+        price = float(d.get("price", 0))
+        tickets = int(d.get("tickets", 0))
+    except (ValueError, TypeError):
+        return "price and tickets must be numbers"
+    if price < 0:
+        return "price cannot be negative"
+    if tickets < 1:
+        return "must have at least 1 ticket"
+    return None
+
+@app.route("/")
+def index():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
+
+@app.route("/api/csrf")
+def csrf_token():
+    if "csrf" not in session:
+        session["csrf"] = secrets.token_hex(16)
+    return jsonify({"token": session["csrf"]})
+
+def check_csrf() -> bool:
+    token = request.headers.get("X-CSRF-Token", "")
+    return token and token == session.get("csrf")
+
+@app.route("/api/register", methods=["POST"])
+def register():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    data = request.json or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+    if len(username) < 3:
+        return jsonify({"error": "username must be at least 3 characters"}), 400
+    if len(password) < 4:
+        return jsonify({"error": "password must be at least 4 characters"}), 400
+    db = get_db()
+    try:
+        db.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hash_pw(password)))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        return jsonify({"error": "username taken"}), 400
