@@ -140,3 +140,74 @@ def register():
     except sqlite3.IntegrityError:
         db.close()
         return jsonify({"error": "username taken"}), 400
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    data = request.json or {}
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE username=? AND password=?",
+                      (data.get("username", "").strip(), hash_pw(data.get("password", "")))).fetchone()
+    db.close()
+    if not user:
+        return jsonify({"error": "invalid credentials"}), 401
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    session["role"] = user["role"]
+    return jsonify({"id": user["id"], "username": user["username"], "role": user["role"]})
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+@app.route("/api/me")
+def me():
+    if "user_id" not in session:
+        return jsonify({"logged_in": False})
+    return jsonify({"logged_in": True, "id": session["user_id"], "username": session["username"], "role": session.get("role")})
+
+@app.route("/api/events")
+def list_events():
+    db = get_db()
+    q = request.args.get("q", "").strip()
+    cat = request.args.get("category", "").strip()
+    sort = request.args.get("sort", "date_asc")
+    page = max(1, int(request.args.get("page", 1)))
+    upcoming = request.args.get("upcoming", "0")
+
+    where, params = [], []
+    if q:
+        where.append("(e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)")
+        params.extend([f"%{q}%"] * 3)
+    if cat and cat != "All":
+        where.append("e.category = ?")
+        params.append(cat)
+    if upcoming == "1":
+        where.append("e.date >= datetime('now')")
+
+    sql_where = "WHERE " + " AND ".join(where) if where else ""
+    order_map = {
+        "date_asc": "e.date ASC",
+        "date_desc": "e.date DESC",
+        "price_asc": "e.price ASC",
+        "price_desc": "e.price DESC",
+    }
+    order = order_map.get(sort, "e.date ASC")
+
+    total = db.execute(f"SELECT COUNT(*) as c FROM events e {sql_where}", params).fetchone()["c"]
+    offset = (page - 1) * PER_PAGE
+    events = db.execute(
+        f"SELECT e.*, u.username as creator FROM events e JOIN users u ON e.created_by=u.id {sql_where} ORDER BY {order} LIMIT ? OFFSET ?",
+        params + [PER_PAGE, offset]
+    ).fetchall()
+    categories = [r["category"] for r in db.execute("SELECT DISTINCT category FROM events ORDER BY category").fetchall()]
+    db.close()
+    return jsonify({"events": [dict(e) for e in events], "total": total, "page": page, "pages": max(1, (total + PER_PAGE - 1) // PER_PAGE), "categories": categories})
+
+@app.route("/api/events/<int:eid>")
+def get_event(eid):
+    db = get_db()
