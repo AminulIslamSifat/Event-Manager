@@ -211,3 +211,74 @@ def list_events():
 @app.route("/api/events/<int:eid>")
 def get_event(eid):
     db = get_db()
+    event = db.execute("SELECT e.*, u.username as creator FROM events e JOIN users u ON e.created_by=u.id WHERE e.id=?", (eid,)).fetchone()
+    db.close()
+    if not event:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(dict(event))
+
+@app.route("/api/events", methods=["POST"])
+@admin_required
+def create_event():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    d = request.json or {}
+    err = validate_event(d)
+    if err:
+        return jsonify({"error": err}), 400
+    db = get_db()
+    db.execute("INSERT INTO events (title,description,date,location,price,tickets,category,image_url,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+               (d["title"].strip(), d["description"].strip(), d["date"], d["location"].strip(),
+                float(d["price"]), int(d["tickets"]), d.get("category", "General").strip(), d.get("image_url", "").strip(), session["user_id"]))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/events/<int:eid>", methods=["PUT"])
+@admin_required
+def update_event(eid):
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    d = request.json or {}
+    err = validate_event(d)
+    if err:
+        return jsonify({"error": err}), 400
+    db = get_db()
+    db.execute("UPDATE events SET title=?,description=?,date=?,location=?,price=?,tickets=?,category=?,image_url=? WHERE id=?",
+               (d["title"].strip(), d["description"].strip(), d["date"], d["location"].strip(),
+                float(d["price"]), int(d["tickets"]), d.get("category", "General").strip(), d.get("image_url", "").strip(), eid))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/events/<int:eid>", methods=["DELETE"])
+@admin_required
+def delete_event(eid):
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    db = get_db()
+    db.execute("DELETE FROM bookings WHERE event_id=?", (eid,))
+    db.execute("DELETE FROM events WHERE id=?", (eid,))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/book", methods=["POST"])
+@login_required
+def book():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    d = request.json or {}
+    qty = int(d.get("quantity", 0))
+    event_id = int(d.get("event_id", 0))
+    if qty < 1:
+        return jsonify({"error": "quantity must be at least 1"}), 400
+    db = get_db()
+    # Atomic check-and-update prevents race condition
+    row = db.execute("SELECT tickets, title, price FROM events WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        db.close()
+        return jsonify({"error": "event not found"}), 404
+    if row["tickets"] < qty:
+        db.close()
+        return jsonify({"error": f"only {row['tickets']} tickets left"}), 400
