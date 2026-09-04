@@ -282,3 +282,74 @@ def book():
     if row["tickets"] < qty:
         db.close()
         return jsonify({"error": f"only {row['tickets']} tickets left"}), 400
+    total = row["price"] * qty
+    # Free events skip payment
+    if total <= 0:
+        db.execute("INSERT INTO bookings (user_id, event_id, quantity, status, payment_method, transaction_id) VALUES (?,?,?,?,?,?)",
+                   (session["user_id"], event_id, qty, "confirmed", "free", "FREE-000"))
+        db.execute("UPDATE events SET tickets=tickets-? WHERE id=? AND tickets>=?", (qty, event_id, qty))
+        db.commit()
+        booking_id = db.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+        db.close()
+        return jsonify({"ok": True, "booking_id": booking_id, "title": row["title"], "total": 0, "quantity": qty, "free": True})
+    # Paid events create pending booking (tickets reserved but not confirmed until payment)
+    db.execute("INSERT INTO bookings (user_id, event_id, quantity, status) VALUES (?,?,?,?)",
+               (session["user_id"], event_id, qty, "pending_payment"))
+    db.execute("UPDATE events SET tickets=tickets-? WHERE id=? AND tickets>=?", (qty, event_id, qty))
+    db.commit()
+    booking_id = db.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+    db.close()
+    return jsonify({"ok": True, "booking_id": booking_id, "title": row["title"], "total": total, "quantity": qty, "free": False})
+
+@app.route("/api/pay", methods=["POST"])
+@login_required
+def pay():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    d = request.json or {}
+    booking_id = int(d.get("booking_id", 0))
+    method = d.get("method", "card")
+    card = d.get("card_number", "").replace(" ", "")
+    db = get_db()
+    booking = db.execute("SELECT * FROM bookings WHERE id=? AND user_id=? AND status='pending_payment'", (booking_id, session["user_id"])).fetchone()
+    if not booking:
+        db.close()
+        return jsonify({"error": "booking not found or already paid"}), 404
+    # Demo validation
+    if method == "card":
+        if len(card) < 13 or not card.isdigit():
+            db.close()
+            return jsonify({"error": "invalid card number"}), 400
+        if card.startswith("4"):
+            pass  # Visa
+        elif card.startswith("5"):
+            pass  # Mastercard
+        else:
+            db.close()
+            return jsonify({"error": "only Visa (4xxx) and Mastercard (5xxx) accepted in demo"}), 400
+    # Simulate transaction ID
+    import time
+    txn = f"TXN-{int(time.time()*1000)}-{booking_id}"
+    # Demo: card ending in 0000 always fails for testing
+    if method == "card" and card.endswith("0000"):
+        db.execute("UPDATE bookings SET status='failed', payment_method=?, transaction_id=? WHERE id=?", (method, txn, booking_id))
+        ev = db.execute("SELECT tickets FROM events WHERE id=?", (booking["event_id"],)).fetchone()
+        db.execute("UPDATE events SET tickets=tickets+? WHERE id=?", (booking["quantity"], booking["event_id"]))
+        db.commit()
+        db.close()
+        return jsonify({"error": "payment declined by bank (demo: cards ending in 0000 fail)"}), 402
+    db.execute("UPDATE bookings SET status='confirmed', payment_method=?, transaction_id=? WHERE id=?", (method, txn, booking_id))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True, "transaction_id": txn, "method": method})
+
+@app.route("/api/bookings")
+@login_required
+def my_bookings():
+    db = get_db()
+    bookings = db.execute(
+        "SELECT b.*, e.title, e.date, e.location, e.price FROM bookings b JOIN events e ON b.event_id=e.id WHERE b.user_id=? AND b.status IN ('confirmed','pending_payment') ORDER BY b.booked_at DESC",
+        (session["user_id"],)
+    ).fetchall()
+    db.close()
+    return jsonify([dict(b) for b in bookings])
