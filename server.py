@@ -353,3 +353,70 @@ def my_bookings():
     ).fetchall()
     db.close()
     return jsonify([dict(b) for b in bookings])
+
+@app.route("/api/bookings/<int:bid>", methods=["DELETE"])
+@login_required
+def cancel_booking(bid):
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    db = get_db()
+    booking = db.execute("SELECT * FROM bookings WHERE id=? AND user_id=? AND status='confirmed'", (bid, session["user_id"])).fetchone()
+    if not booking:
+        db.close()
+        return jsonify({"error": "booking not found"}), 404
+    db.execute("UPDATE bookings SET status='cancelled' WHERE id=?", (bid,))
+    db.execute("UPDATE events SET tickets=tickets+? WHERE id=?", (booking["quantity"], booking["event_id"]))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/change-password", methods=["POST"])
+@login_required
+def change_password():
+    if not check_csrf():
+        return jsonify({"error": "invalid csrf token"}), 403
+    d = request.json or {}
+    old_pw = d.get("old_password", "")
+    new_pw = d.get("new_password", "")
+    if len(new_pw) < 4:
+        return jsonify({"error": "new password must be at least 4 characters"}), 400
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+    if user["password"] != hash_pw(old_pw):
+        db.close()
+        return jsonify({"error": "current password is wrong"}), 401
+    db.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(new_pw), session["user_id"]))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+@app.route("/api/admin/stats")
+@admin_required
+def admin_stats():
+    db = get_db()
+    total_events = db.execute("SELECT COUNT(*) as c FROM events").fetchone()["c"]
+    total_bookings = db.execute("SELECT COUNT(*) as c FROM bookings WHERE status='confirmed'").fetchone()["c"]
+    revenue = db.execute("SELECT COALESCE(SUM(b.quantity * e.price), 0) as r FROM bookings b JOIN events e ON b.event_id=e.id WHERE b.status='confirmed'").fetchone()["r"]
+    popular = db.execute(
+        "SELECT e.title, SUM(b.quantity) as sold FROM bookings b JOIN events e ON b.event_id=e.id WHERE b.status='confirmed' GROUP BY e.id ORDER BY sold DESC LIMIT 5"
+    ).fetchall()
+    db.close()
+    return jsonify({"total_events": total_events, "total_bookings": total_bookings, "revenue": round(revenue, 2), "popular": [dict(p) for p in popular]})
+
+@app.route("/api/export-bookings")
+@admin_required
+def export_bookings():
+    db = get_db()
+    rows = db.execute(
+        "SELECT u.username, e.title, e.date, e.location, b.quantity, e.price, b.quantity*e.price as total, b.booked_at FROM bookings b JOIN users u ON b.user_id=u.id JOIN events e ON b.event_id=e.id WHERE b.status='confirmed' ORDER BY b.booked_at DESC"
+    ).fetchall()
+    db.close()
+    lines = ["Username,Event,Date,Location,Qty,Price,Total,Booked At"]
+    for r in rows:
+        lines.append(f'"{r["username"]}","{r["title"]}","{r["date"]}","{r["location"]}",{r["quantity"]},{r["price"]},{r["total"]},"{r["booked_at"]}"')
+    resp = "\n".join(lines)
+    return resp, 200, {"Content-Type": "text/csv", "Content-Disposition": "attachment; filename=bookings.csv"}
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", debug=False, port=9000)
