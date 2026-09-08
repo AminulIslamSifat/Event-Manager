@@ -1,0 +1,34 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e0e0e0; -webkit-tap-highlight-color: transparent; }
+nav { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1rem; background: #1a1a1a; border-bottom: 1px solid #2a2a2a; position: sticky; top: 0; z-index: 100; }
+nav h1 { cursor: pointer; font-size: 1.1rem; color: #7c5cfc; white-space: nowrap; }
+#nav-links { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+#nav-links button { background: none; border: 1px solid #333; color: #ccc; padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+#nav-links button:hover { border-color: #7c5cfc; color: #fff; }
+main { max-width: 900px; margin: 1.5rem auto; padding: 0 0.75rem; }
+.card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 1.2rem; margin-bottom: 0.75rem; }
+.card h2 { margin-bottom: 0.4rem; color: #fff; font-size: 1.1rem; }
+.card p { color: #999; margin-bottom: 0.3rem; font-size: 0.95rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+input, select, textarea { width: 100%; padding: 0.7rem; margin-bottom: 0.8rem; background: #111; border: 1px solid #333; color: #e0e0e0; border-radius: 6px; font-size: 1rem; }
+button.primary { background: #7c5cfc; color: #fff; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1rem; }
+button.primary:hover { background: #6a4ae0; }
+button.danger { background: #c0392b; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; }
+.form-group { max-width: 450px; margin: 0 auto; }
+.tag { display: inline-block; background: #7c5cfc22; color: #7c5cfc; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-right: 0.4rem; }
+.meta { display: flex; gap: 0.75rem; margin: 0.4rem 0; font-size: 0.85rem; flex-wrap: wrap; }
+.error { color: #e74c3c; margin-bottom: 0.5rem; font-size: 0.9rem; }
+.back-btn { background: none; border: none; color: #7c5cfc; cursor: pointer; margin-bottom: 1rem; font-size: 0.95rem; padding: 0.3rem 0; }
+@media (max-width: 600px) {
+    nav { flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.75rem; }
+    nav h1 { font-size: 1rem; }
+    #nav-links { width: 100%; justify-content: center; gap: 0.4rem; }
+    #nav-links button { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    main { margin: 1rem auto; padding: 0 0.5rem; }
+    .grid { grid-template-columns: 1fr; gap: 0.5rem; }
+    .card { padding: 1rem; }
+    .card h2 { font-size: 1rem; }
+    .form-group { padding: 0 0.25rem; }
+    input, select, textarea { padding: 0.65rem; font-size: 16px; }
+    button.primary { padding: 0.65rem; font-size: 16px; }
+}

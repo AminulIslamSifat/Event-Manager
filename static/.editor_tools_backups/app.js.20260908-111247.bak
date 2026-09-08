@@ -1,0 +1,148 @@
+let currentUser = null;
+const app = document.getElementById("app");
+const navLinks = document.getElementById("nav-links");
+
+async function api(url, opts = {}) {
+    const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opts });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "failed");
+    return data;
+}
+
+function navigate(view, param) {
+    const views = { events: renderEvents, login: renderLogin, register: renderRegister, detail: renderDetail, bookings: renderBookings, admin: renderAdmin, createEvent: renderCreateEvent, editEvent: renderEditEvent };
+    if (views[view]) views[view](param);
+}
+
+function updateNav() {
+    navLinks.innerHTML = "";
+    const btn = (text, fn) => { const b = document.createElement("button"); b.textContent = text; b.onclick = fn; navLinks.appendChild(b); };
+    if (currentUser) {
+        btn("Events", () => navigate("events"));
+        btn("My Bookings", () => navigate("bookings"));
+        if (currentUser.role === "admin") btn("Manage Events", () => navigate("admin"));
+        btn(`Logout (${currentUser.username})`, async () => { await api("/api/logout", { method: "POST" }); currentUser = null; updateNav(); navigate("events"); });
+    } else {
+        btn("Login", () => navigate("login"));
+        btn("Register", () => navigate("register"));
+    }
+}
+
+async function checkAuth() {
+    try { currentUser = await api("/api/me"); } catch { currentUser = null; }
+    updateNav();
+    navigate("events");
+}
+
+async function renderEvents() {
+    const events = await api("/api/events");
+    app.innerHTML = `<h2 style="margin-bottom:1rem">Upcoming Events</h2><div class="grid">${events.map(e => `
+        <div class="card" style="cursor:pointer" onclick="navigate('detail',${e.id})">
+            <h2>${e.title}</h2>
+            <div class="meta"><span class="tag">${e.date}</span><span>${e.location}</span></div>
+            <p>৳${e.price} · ${e.tickets} tickets left</p>
+        </div>`).join("")}</div>`;
+}
+
+function renderLogin() {
+    app.innerHTML = `<div class="form-group card"><h2>Login</h2><br>
+        <div id="err" class="error"></div>
+        <input id="u" placeholder="Username">
+        <input id="p" type="password" placeholder="Password">
+        <button class="primary" onclick="doLogin()">Login</button></div>`;
+}
+
+async function doLogin() {
+    try {
+        currentUser = await api("/api/login", { method: "POST", body: JSON.stringify({ username: document.getElementById("u").value, password: document.getElementById("p").value }) });
+        updateNav(); navigate("events");
+    } catch (e) { document.getElementById("err").textContent = e.message; }
+}
+
+function renderRegister() {
+    app.innerHTML = `<div class="form-group card"><h2>Register</h2><br>
+        <div id="err" class="error"></div>
+        <input id="u" placeholder="Username">
+        <input id="p" type="password" placeholder="Password">
+        <button class="primary" onclick="doRegister()">Register</button></div>`;
+}
+
+async function doRegister() {
+    try {
+        await api("/api/register", { method: "POST", body: JSON.stringify({ username: document.getElementById("u").value, password: document.getElementById("p").value }) });
+        navigate("login");
+    } catch (e) { document.getElementById("err").textContent = e.message; }
+}
+
+async function renderDetail(id) {
+    const e = await api(`/api/events/${id}`);
+    app.innerHTML = `<button class="back-btn" onclick="navigate('events')">← Back</button>
+        <div class="card"><h2>${e.title}</h2>
+        <div class="meta"><span class="tag">${e.date}</span><span>${e.location}</span><span>By ${e.creator}</span></div>
+        <p style="margin:1rem 0">${e.description}</p>
+        <p>Price: ৳${e.price} | Available: ${e.tickets}</p>
+        ${currentUser ? `<br><div style="display:flex;gap:0.5rem;align-items:center"><input id="qty" type="number" value="1" min="1" max="${e.tickets}" style="width:80px;margin:0"><button class="primary" onclick="bookTicket(${e.id})">Book Now</button></div><div id="err" class="error" style="margin-top:0.5rem"></div>` : `<p style="margin-top:1rem;color:#7c5cfc">Login to book tickets</p>`}
+        </div>`;
+}
+
+async function bookTicket(eventId) {
+    const qty = parseInt(document.getElementById("qty").value);
+    try {
+        await api("/api/book", { method: "POST", body: JSON.stringify({ event_id: eventId, quantity: qty }) });
+        renderDetail(eventId);
+    } catch (e) { document.getElementById("err").textContent = e.message; }
+}
+
+async function renderBookings() {
+    const bookings = await api("/api/bookings");
+    app.innerHTML = `<h2 style="margin-bottom:1rem">My Bookings</h2>${bookings.length === 0 ? "<p>No bookings yet.</p>" : bookings.map(b => `
+        <div class="card"><h2>${b.title}</h2>
+        <div class="meta"><span class="tag">${b.date}</span><span>${b.location}</span></div>
+        <p>Tickets: ${b.quantity} · Total: ৳${b.price * b.quantity}</p></div>`).join("")}`;
+}
+
+async function renderAdmin() {
+    const events = await api("/api/events");
+    app.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2>Manage Events</h2><button class="primary" onclick="navigate('createEvent')">+ Add Event</button></div>
+        ${events.map(e => `<div class="card" style="display:flex;justify-content:space-between;align-items:center">
+            <div><h2>${e.title}</h2><p>${e.date} · ${e.tickets} left</p></div>
+            <div style="display:flex;gap:0.5rem"><button class="primary" onclick="navigate('editEvent',${e.id})">Edit</button><button class="danger" onclick="deleteEvent(${e.id})">Delete</button></div>
+        </div>`).join("")}`;
+}
+
+async function deleteEvent(id) {
+    await api(`/api/events/${id}`, { method: "DELETE" });
+    navigate("admin");
+}
+
+function eventForm(title, e = {}) {
+    return `<div class="form-group card"><h2>${title}</h2><br>
+        <input id="title" placeholder="Title" value="${e.title || ""}">
+        <textarea id="desc" placeholder="Description" rows="4">${e.description || ""}</textarea>
+        <input id="date" type="datetime-local" value="${e.date || ""}">
+        <input id="loc" placeholder="Location" value="${e.location || ""}">
+        <input id="price" type="number" placeholder="Price (৳)" value="${e.price || ""}">
+        <input id="tickets" type="number" placeholder="Total Tickets" value="${e.tickets || ""}">
+        <button class="primary" id="submit-btn">Save</button></div>`;
+}
+
+function renderCreateEvent() {
+    app.innerHTML = eventForm("Create Event");
+    document.getElementById("submit-btn").onclick = async () => {
+        await api("/api/events", { method: "POST", body: JSON.stringify({ title: v("title"), description: v("desc"), date: v("date"), location: v("loc"), price: parseFloat(v("price")), tickets: parseInt(v("tickets")) }) });
+        navigate("admin");
+    };
+}
+
+async function renderEditEvent(id) {
+    const e = await api(`/api/events/${id}`);
+    app.innerHTML = eventForm("Edit Event", e);
+    document.getElementById("submit-btn").onclick = async () => {
+        await api(`/api/events/${id}`, { method: "PUT", body: JSON.stringify({ title: v("title"), description: v("desc"), date: v("date"), location: v("loc"), price: parseFloat(v("price")), tickets: parseInt(v("tickets")) }) });
+        navigate("admin");
+    };
+}
+
+function v(id) { return document.getElementById(id).value; }
+
+checkAuth();
