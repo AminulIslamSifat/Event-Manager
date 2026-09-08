@@ -1,2 +1,4 @@
 events.db
 .venv/
+.editor_tools_backups/
+*.txt
