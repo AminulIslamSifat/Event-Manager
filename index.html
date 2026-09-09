@@ -13,3 +13,18 @@
 <body>
 
 <!-- ============ HEADER : brand · search · nav ============ -->
+<header class="site-header">
+  <div class="header-inner">
+
+    <a class="brand" onclick="navigate('events')">Event <em>Khujo</em></a>
+
+    <div class="search">
+      <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M13.5 13.5 17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <input id="nav-search" type="search" placeholder="Search events, places…" autocomplete="off" aria-label="Search events">
+    </div>
+
+    <nav id="nav-links" class="nav-links"></nav>
+
