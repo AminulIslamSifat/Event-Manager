@@ -1,0 +1,116 @@
+/* ============================================================
+   EVENT KHUJO — Design System
+   Aesthetic minimal · warm dark · gold accent
+   ============================================================ */
+
+/* ---------- 1. Tokens ---------- */
+:root {
+  /* surfaces */
+  --bg:            #0a0a0b;
+  --bg-elevated:   #101012;
+  --card:          #121214;
+  --card-hover:    #17171a;
+  --input:         #0e0e10;
+
+  /* lines */
+  --line:          rgba(255, 255, 255, 0.07);
+  --line-strong:   rgba(255, 255, 255, 0.13);
+  --gold-line:     rgba(200, 170, 80, 0.28);
+
+  /* text */
+  --text:          #f2efe9;
+  --text-soft:     #a8a49c;
+  --text-dim:      #6a6760;
+
+  /* accent */
+  --gold:          #c9a94e;
+  --gold-bright:   #e0c778;
+  --gold-wash:     rgba(201, 169, 78, 0.10);
+  --gold-wash-2:   rgba(201, 169, 78, 0.18);
+
+  /* semantic */
+  --danger:        #c05a5a;
+  --success:       #6aab7b;
+
+  /* shape */
+  --r-sm: 8px;
+  --r:    12px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- 2. Reset ---------- */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  background-image:
+    radial-gradient(900px 500px at 15% -10%, rgba(201, 169, 78, 0.055), transparent 60%),
+    radial-gradient(700px 400px at 95% 0%, rgba(201, 169, 78, 0.03), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection { background: var(--gold-wash-2); color: var(--gold-bright); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #26262a; border-radius: var(--r-pill); border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #33333a; }
+
+/* ---------- 3. Typography ---------- */
+h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
+
+/* Display serif — used for hero + view titles */
+.display {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+/* View header block */
+.view-head { margin-bottom: 2rem; }
+.view-head .eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+.view-head h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
+.view-head p.sub { color: var(--text-soft); margin-top: 0.5rem; max-width: 52ch; }
+
+/* ---------- 4. Layout ---------- */
+.app {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 6rem;
+}
+
+.app-narrow { max-width: 520px; }
+
+/* ---------- 5. Header ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 10, 11, 0.82);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+}
+
+.header-inner {
