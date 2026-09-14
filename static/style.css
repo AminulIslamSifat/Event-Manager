@@ -114,3 +114,119 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 }
 
 .header-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.brand {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.brand em {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold);
+}
+.brand:hover { opacity: 0.75; }
+
+/* Search — grows to fill the middle */
+.search {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+}
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--text-dim);
+  pointer-events: none;
+  transition: color 0.2s;
+}
+.search input {
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.9rem 0.55rem 2.4rem;
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.search input::placeholder { color: var(--text-dim); }
+.search input:focus {
+  border-color: var(--gold-line);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 3px var(--gold-wash);
+}
+.search:focus-within .search-icon { color: var(--gold); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* Nav links */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.nav-links button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-soft);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--r-pill);
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s var(--ease);
+}
+.nav-links button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+}
+/* Primary CTA in nav */
+.nav-links button.accent {
+  color: var(--gold);
+  border-color: var(--gold-line);
+}
+.nav-links button.accent:hover {
+  background: var(--gold-wash);
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+/* Logged-in username chip */
+.nav-links button.user {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- 6. Buttons ---------- */
+button { font-family: inherit; }
+
+.btn, button.primary, button.ghost, button.danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.62rem 1.15rem;
+  border-radius: var(--r-sm);
