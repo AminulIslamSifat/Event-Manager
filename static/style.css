@@ -578,3 +578,117 @@ select { cursor: pointer; appearance: none;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stat-card { padding: 1.35rem; }
+.stat-value {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2rem;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.list-row:last-child { border-bottom: none; }
+.list-row .info { flex: 1; min-width: 200px; }
+.list-row .actions { display: flex; gap: 0.5rem; }
+
+/* ---------- 20. Pagination ---------- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 3rem;
+  flex-wrap: wrap;
+}
+.pagination button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 0.7rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.pagination button:hover:not(:disabled) { border-color: var(--gold-line); color: var(--text); }
+.pagination button.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #14110a;
+  font-weight: 600;
+}
+.pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ---------- 21. Confirmation ---------- */
+.confirm-box { text-align: center; padding: 2.5rem 2rem; }
+.confirm-check {
+  width: 56px; height: 56px;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+.confirm-box h2 { font-size: 1.5rem; margin-bottom: 0.4rem; }
+
+/* ---------- 22. Utility ---------- */
+.center { text-align: center; }
+.mt-2 { margin-top: 1.5rem; }
+.mb-2 { margin-bottom: 1.5rem; }
+.muted { color: var(--text-dim); }
+.flex-between { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.hidden { display: none !important; }
+
+/* ---------- 23. Responsive ---------- */
+@media (max-width: 860px) {
+  .header-inner { flex-wrap: wrap; gap: 0.7rem; }
+  .brand { order: 1; }
+  .nav-links { order: 2; margin-left: auto; }
+  .search { order: 3; flex-basis: 100%; max-width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .app { padding: 2rem 1rem 4rem; }
+  .header-inner { padding: 0.7rem 1rem; }
+  .nav-links button { padding: 0.4rem 0.65rem; font-size: 0.78rem; }
+  .grid { grid-template-columns: 1fr; gap: 1rem; }
+  .view-head { margin-bottom: 1.5rem; }
+  .card { padding: 1.25rem; border-radius: var(--r); }
+  .detail-hero { height: 180px; font-size: 3rem; }
+  .auth-wrap { margin-top: 1.5rem; }
+  .auth-wrap .card { padding: 1.5rem; }
+  .toolbar { flex-direction: column; }
+  .toolbar select { width: 100%; }
+  #toast-container { left: 1rem; right: 1rem; bottom: 1rem; }
+  .toast { max-width: 100%; }
+  .list-row { flex-direction: column; align-items: flex-start; }
+  .list-row .actions { width: 100%; }
+  .list-row .actions button { flex: 1; }
+}
+<!-- update 7200 -->
+<!-- update 43200 -->
+<!-- update 86400 -->
+/* grid layout: repeat(auto-fill, minmax(280px, 1fr)) */
+/* @media (max-width: 768px) responsive adjustments */
+/* :root { --primary, --surface, --radius, --spacing } */
