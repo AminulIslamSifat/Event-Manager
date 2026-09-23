@@ -1,0 +1,107 @@
+/* ============================================================
+   EVENT KHUJO — Frontend
+   Single-page app. No build step, plain ES2020.
+   Structure:
+     1. State          6. Modal
+     2. API layer      7. Navigation
+     3. DOM helpers    8. Nav bar
+     4. Utilities      9. Auth pages
+     5. Toast         10. Views
+   ============================================================ */
+
+/* ---------- 1. State ---------- */
+
+let currentUser = null;      // { id, username, role, logged_in } | null
+let csrfToken   = "";
+let currentView = "events";
+let viewParam   = null;
+let lastBooking = null;      // carries data between book -> pay -> confirm
+
+// Events-list filters
+let searchQuery    = "";
+let filterCategory = "All";
+let sortBy         = "date_asc";
+let currentPage    = 1;
+
+// Payment form state
+let payMethod = "card";
+
+const app      = document.getElementById("app");
+const navLinks = document.getElementById("nav-links");
+
+/* ---------- 2. API layer ---------- */
+
+async function api(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": csrfToken,
+    ...(options.headers || {}),
+  };
+  const res  = await fetch(path, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data;
+}
+
+async function loadCsrfToken() {
+  const res = await fetch("/api/csrf");
+  csrfToken = (await res.json()).token;
+}
+
+/* ---------- 3. DOM helpers ---------- */
+
+/** Get an element's value by id ("" when missing). */
+const val = (id) => document.getElementById(id)?.value ?? "";
+
+/** Run `fn` when Enter is pressed inside `id`. */
+function onEnter(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") fn(); });
+}
+
+/* ---------- 4. Utilities ---------- */
+
+/** Escape untrusted text before injecting into innerHTML. */
+function esc(value) {
+  const div = document.createElement("div");
+  div.textContent = value ?? "";
+  return div.innerHTML;
+}
+
+const CATEGORY_ICONS = {
+  Tech: "💻", Music: "🎵", Art: "🎨", Sports: "⚽",
+  Food: "🍕", Education: "📚", General: "📌",
+};
+
+const categoryIcon = (category) => CATEGORY_ICONS[category] || "📌";
+
+/** "2026-08-23T14:00" -> "Aug 23, 2026 · 2:00 PM" */
+function formatDate(raw) {
+  if (!raw) return "";
+  const dt = new Date(String(raw).replace("T", " "));
+  if (isNaN(dt)) return raw;
+  const date = dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${date} · ${time}`;
+}
+
+/** Returns { text, free } so callers can style free events differently. */
+function priceLabel(price) {
+  const n = Number(price) || 0;
+  if (n <= 0) return { text: "Free", free: true };
+  return { text: `৳${n.toFixed(n % 1 === 0 ? 0 : 2)}`, free: false };
+}
+
+/** A grid of shimmering placeholder cards shown while data loads. */
+function skeletonGrid(count = 6) {
+  const cards = Array.from({ length: count }, () => `<div class="skeleton skeleton-card"></div>`).join("");
+  return `<div class="grid">${cards}</div>`;
+}
+
+/* ---------- 5. Toast ---------- */
+
+function toast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.textContent = message;
