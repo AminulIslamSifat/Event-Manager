@@ -105,3 +105,110 @@ function toast(message, type = "success") {
   const el = document.createElement("div");
   el.className = `toast ${type}`;
   el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("fade-out");
+    setTimeout(() => el.remove(), 250);
+  }, 3000);
+}
+
+/* ---------- 6. Modal ---------- */
+
+function confirmModal(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal">
+        <h3>${esc(title)}</h3>
+        <p>${esc(message)}</p>
+        <div class="modal-actions">
+          <button class="ghost" data-act="cancel">Cancel</button>
+          <button class="danger" data-act="confirm">Confirm</button>
+        </div>
+      </div>`;
+
+    const close = (result) => { overlay.remove(); resolve(result); };
+    overlay.querySelector('[data-act="cancel"]').onclick  = () => close(false);
+    overlay.querySelector('[data-act="confirm"]').onclick = () => close(true);
+    overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+    document.body.appendChild(overlay);
+  });
+}
+
+/* ---------- 7. Navigation ---------- */
+
+const VIEWS = {
+  events:         renderEvents,
+  detail:         renderDetail,
+  login:          renderLogin,
+  register:       renderRegister,
+  bookings:       renderBookings,
+  profile:        renderProfile,
+  admin:          renderAdmin,
+  createEvent:    renderCreateEvent,
+  editEvent:      renderEditEvent,
+  payment:        renderPayment,
+  bookingConfirm: renderBookingConfirm,
+};
+
+function navigate(view, param) {
+  currentView = view;
+  viewParam   = param;
+  const hash = `#${view}${param !== undefined ? "/" + param : ""}`;
+  history.pushState({ view, param }, "", hash);
+  render();
+}
+
+function readHash() {
+  const parts = (location.hash.slice(1) || "events").split("/");
+  currentView = parts[0] || "events";
+  const raw   = parts[1];
+  viewParam   = raw === undefined ? null : (isNaN(raw) ? raw : parseInt(raw, 10));
+}
+
+function render() {
+  window.scrollTo({ top: 0 });
+  (VIEWS[currentView] || renderEvents)(viewParam);
+}
+
+window.addEventListener("popstate", (e) => {
+  if (e.state) { currentView = e.state.view; viewParam = e.state.param; render(); }
+  else { readHash(); render(); }
+});
+
+/* ---------- 8. Nav bar ---------- */
+
+function updateNav() {
+  navLinks.innerHTML = "";
+  const loggedIn = Boolean(currentUser?.logged_in);
+
+  const addButton = (label, onClick, className = "") => {
+    const button = document.createElement("button");
+    button.textContent = label;
+    if (className) button.className = className;
+    button.onclick = onClick;
+    navLinks.appendChild(button);
+  };
+
+  // 1 — Find Event: jump to the list and focus the search box
+  addButton("Find Event", () => {
+    if (currentView !== "events") navigate("events");
+    document.getElementById("nav-search").focus();
+  });
+
+  // 2 — Create Event (backend requires admin)
+  addButton("Create Event", () => {
+    if (!loggedIn)              return navigate("login");
+    if (currentUser.role !== "admin") return toast("Admin access required", "error");
+    navigate("createEvent");
+  }, "accent");
+
+  // 3 — My Tickets (always visible; the view redirects if logged out)
+  addButton("My Tickets", () => navigate("bookings"));
+
+  // 4 & 5 — Auth area
+  if (loggedIn) {
+    addButton(currentUser.username, () => navigate("profile"), "user");
+    addButton("Logout", async () => {
+      await api("/api/logout", { method: "POST" });
