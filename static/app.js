@@ -212,3 +212,110 @@ function updateNav() {
     addButton(currentUser.username, () => navigate("profile"), "user");
     addButton("Logout", async () => {
       await api("/api/logout", { method: "POST" });
+      currentUser = null;
+      updateNav();
+      navigate("events");
+    });
+  } else {
+    addButton("Login", () => navigate("login"));
+    addButton("Sign Up", () => navigate("register"));
+  }
+}
+
+/* ---------- 9. Header search (global) ---------- */
+
+let searchTimer;
+
+function setupHeaderSearch() {
+  const input = document.getElementById("nav-search");
+
+  const apply = () => {
+    searchQuery = input.value;
+    currentPage = 1;
+    if (currentView !== "events") navigate("events");
+    else loadEvents();
+  };
+
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(apply, 300);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter")  { clearTimeout(searchTimer); apply(); }
+    if (e.key === "Escape") { input.value = ""; input.blur(); }
+  });
+}
+
+function clearSearch() {
+  searchQuery = "";
+  const input = document.getElementById("nav-search");
+  if (input) input.value = "";
+}
+
+/* ---------- 10. Auth ---------- */
+
+async function checkAuth() {
+  await loadCsrfToken();
+  try {
+    currentUser = await api("/api/me");
+    if (!currentUser.logged_in) currentUser = null;
+  } catch {
+    currentUser = null;
+  }
+  updateNav();
+  readHash();
+  render();
+}
+
+function renderLogin() {
+  app.innerHTML = `
+    <div class="auth-wrap">
+      <h1 class="display">Welcome back</h1>
+      <p class="sub">Sign in to book tickets and manage your events.</p>
+      <div class="card">
+        <div id="err" class="error"></div>
+        <label class="field-label" for="u">Username</label>
+        <input id="u" placeholder="your username" autocomplete="username">
+        <label class="field-label" for="p">Password</label>
+        <input id="p" type="password" placeholder="••••••••" autocomplete="current-password">
+        <button class="primary" style="width:100%;margin-top:0.5rem" onclick="doLogin()">Sign in</button>
+        <p class="form-links">No account? <a onclick="navigate('register')">Create one</a></p>
+      </div>
+    </div>`;
+  onEnter("u", doLogin);
+  onEnter("p", doLogin);
+}
+
+async function doLogin() {
+  const username = val("u").trim();
+  const password = val("p");
+  if (!username || !password) return void (document.getElementById("err").textContent = "Fill in both fields");
+
+  try {
+    currentUser = await api("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    currentUser.logged_in = true;
+    updateNav();
+    toast(`Welcome back, ${currentUser.username}`);
+    navigate("events");
+  } catch (e) {
+    document.getElementById("err").textContent = e.message;
+  }
+}
+
+function renderRegister() {
+  app.innerHTML = `
+    <div class="auth-wrap">
+      <h1 class="display">Create your account</h1>
+      <p class="sub">Join Event Khujo to book tickets in seconds.</p>
+      <div class="card">
+        <div id="err" class="error"></div>
+        <label class="field-label" for="u">Username</label>
+        <input id="u" placeholder="at least 3 characters" autocomplete="username">
+        <label class="field-label" for="p">Password</label>
+        <input id="p" type="password" placeholder="at least 4 characters" autocomplete="new-password">
+        <button class="primary" style="width:100%;margin-top:0.5rem" onclick="doRegister()">Create account</button>
+        <p class="form-links">Already registered? <a onclick="navigate('login')">Sign in</a></p>
