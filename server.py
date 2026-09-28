@@ -69,6 +69,7 @@ def init_db():
 
 def hash_pw(pw: str) -> str:
     salt = os.environ.get("PW_SALT", "eventkhujo_salt_2026")
+    print(hashlib.sha256(f"{salt}:{pw}".encode()).hexdigest())
     return hashlib.sha256(f"{salt}:{pw}".encode()).hexdigest()
 
 def login_required(f):
