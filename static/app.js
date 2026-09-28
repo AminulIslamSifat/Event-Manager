@@ -319,3 +319,110 @@ function renderRegister() {
         <input id="p" type="password" placeholder="at least 4 characters" autocomplete="new-password">
         <button class="primary" style="width:100%;margin-top:0.5rem" onclick="doRegister()">Create account</button>
         <p class="form-links">Already registered? <a onclick="navigate('login')">Sign in</a></p>
+      </div>
+    </div>`;
+  onEnter("u", doRegister);
+  onEnter("p", doRegister);
+}
+
+async function doRegister() {
+  const username = val("u").trim();
+  const password = val("p");
+  if (!username || !password) return void (document.getElementById("err").textContent = "Fill in both fields");
+
+  try {
+    await api("/api/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    toast("Account created — please sign in");
+    navigate("login");
+  } catch (e) {
+    document.getElementById("err").textContent = e.message;
+  }
+}
+
+/* ---------- 11. Events list ---------- */
+
+function eventCard(event) {
+  const { text, free } = priceLabel(event.price);
+  const thumb = event.image_url
+    ? `<img src="${esc(event.image_url)}" alt="" onerror="this.remove()">`
+    : `<span class="thumb-emoji">${categoryIcon(event.category)}</span>`;
+
+  return `
+    <article class="card event-card" onclick="navigate('detail',${event.id})">
+      <div class="event-thumb">${thumb}</div>
+      <div class="event-body">
+        <h3>${esc(event.title)}</h3>
+        <div class="meta">
+          <span class="tag">${formatDate(event.date)}</span>
+          <span class="tag">${esc(event.category || "General")}</span>
+        </div>
+        <div class="meta"><span class="tag">📍 ${esc(event.location)}</span></div>
+        <div class="event-foot">
+          <span class="price${free ? " free" : ""}">${text}</span>
+          <span class="tickets-left">${event.tickets} left</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+async function renderEvents() {
+  const headerSearch = document.getElementById("nav-search");
+  if (headerSearch && headerSearch.value !== searchQuery) headerSearch.value = searchQuery;
+
+  app.innerHTML = `
+    <div class="view-head">
+      <div class="eyebrow">Discover</div>
+      <h1 class="display">Find your next event</h1>
+    </div>
+    <div class="toolbar">
+      <select id="cat-filter" onchange="filterCategory=this.value;currentPage=1;renderEvents()">
+        <option value="All">All categories</option>
+      </select>
+      <select id="sort" onchange="sortBy=this.value;currentPage=1;renderEvents()">
+        <option value="date_asc"  ${sortBy === "date_asc"  ? "selected" : ""}>Date · soonest</option>
+        <option value="date_desc" ${sortBy === "date_desc" ? "selected" : ""}>Date · latest</option>
+        <option value="price_asc" ${sortBy === "price_asc" ? "selected" : ""}>Price · low to high</option>
+        <option value="price_desc"${sortBy === "price_desc" ? "selected" : ""}>Price · high to low</option>
+      </select>
+    </div>
+    <div id="events-grid">${skeletonGrid(6)}</div>
+    <div id="pagination" class="pagination"></div>`;
+
+  loadEvents();
+}
+
+async function loadEvents() {
+  const grid = document.getElementById("events-grid");
+  if (!grid) return;
+  grid.innerHTML = skeletonGrid(6);
+
+  try {
+    const params = new URLSearchParams({
+      q: searchQuery,
+      category: filterCategory,
+      sort: sortBy,
+      page: currentPage,
+      upcoming: "1",
+    });
+    const data = await api(`/api/events?${params}`);
+
+    syncCategoryFilter(data.categories);
+
+    if (!data.events.length) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <p>No events match your search.</p>
+          <button class="ghost" onclick="clearSearch();filterCategory='All';currentPage=1;renderEvents()">Clear filters</button>
+        </div>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+
+    grid.innerHTML = `<div class="grid">${data.events.map(eventCard).join("")}</div>`;
+    renderPagination(data.pages);
+  } catch {
+    grid.innerHTML = `<div class="empty-state"><p>Couldn't load events. Try again.</p></div>`;
