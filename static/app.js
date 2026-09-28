@@ -100,7 +100,7 @@ function parseHash() {
 }
 
 function render() {
-    const views = { events: renderEvents, login: renderLogin, register: renderRegister, detail: renderDetail, bookings: renderBookings, admin: renderAdmin, createEvent: renderCreateEvent, editEvent: renderEditEvent, profile: renderProfile, bookingConfirm: renderBookingConfirm };
+    const views = { events: renderEvents, login: renderLogin, register: renderRegister, detail: renderDetail, bookings: renderBookings, admin: renderAdmin, createEvent: renderCreateEvent, editEvent: renderEditEvent, profile: renderProfile, payment: renderPayment, bookingConfirm: renderBookingConfirm };
     if (views[currentView]) views[currentView](viewParam);
     else renderEvents();
 }
@@ -302,8 +302,12 @@ async function bookTicket(eventId) {
     try {
         const data = await api("/api/book", { method: "POST", body: JSON.stringify({ event_id: eventId, quantity: qty }) });
         lastBooking = data;
-        toast("Booked successfully!");
-        navigate("bookingConfirm");
+        if (data.free) {
+            toast("Booked successfully!");
+            navigate("bookingConfirm");
+        } else {
+            navigate("payment");
+        }
     } catch (e) {
         const errEl = document.getElementById("err");
         if (errEl) errEl.textContent = e.message;
@@ -311,17 +315,128 @@ async function bookTicket(eventId) {
 }
 
 let lastBooking = null;
+
+// --- Payment ---
+function renderPayment() {
+    if (!lastBooking || lastBooking.free) { navigate("events"); return; }
+    const b = lastBooking;
+    app.innerHTML = `<button class="back-btn" onclick="navigate('detail',${b.event_id || ''})">← Back</button>
+        <div class="card" style="max-width:440px;margin:0 auto">
+            <h2 style="font-size:1rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gold)">Checkout</h2>
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem"><span style="color:var(--text-dim);font-size:0.8rem">Event</span><span style="font-size:0.85rem">${esc(b.title)}</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem"><span style="color:var(--text-dim);font-size:0.8rem">Tickets</span><span style="font-size:0.85rem">${b.quantity}</span></div>
+                <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:0.4rem;margin-top:0.4rem"><span style="font-weight:600;font-size:0.85rem">Total</span><span style="font-weight:700;color:var(--gold);font-size:1rem">৳${Number(b.total).toFixed(2)}</span></div>
+            </div>
+            <div id="pay-err" class="error"></div>
+            <div style="display:flex;gap:0.4rem;margin-bottom:1rem">
+                <button class="ghost pay-method active" onclick="selectPayMethod('card',this)" style="flex:1;text-align:center;font-size:0.78rem">💳 Card</button>
+                <button class="ghost pay-method" onclick="selectPayMethod('bkash',this)" style="flex:1;text-align:center;font-size:0.78rem">📱 bKash</button>
+                <button class="ghost pay-method" onclick="selectPayMethod('nagad',this)" style="flex:1;text-align:center;font-size:0.78rem">📱 Nagad</button>
+            </div>
+            <div id="pay-fields">${cardFields()}</div>
+            <button class="primary" onclick="processPayment()" style="width:100%;margin-top:0.5rem" id="pay-btn">Pay ৳${Number(b.total).toFixed(2)}</button>
+            <p style="text-align:center;font-size:0.7rem;color:var(--text-dim);margin-top:0.75rem">Demo mode — no real charges. Use 4xxx for Visa, 5xxx for MC. Cards ending in 0000 will be declined.</p>
+        </div>`;
+}
+
+let payMethod = "card";
+function selectPayMethod(method, el) {
+    payMethod = method;
+    document.querySelectorAll(".pay-method").forEach(b => b.classList.remove("active"));
+    el.classList.add("active");
+    el.style.borderColor = "var(--gold)";
+    el.style.color = "var(--gold)";
+    document.querySelectorAll(".pay-method:not(.active)").forEach(b => { b.style.borderColor = ""; b.style.color = ""; });
+    document.getElementById("pay-fields").innerHTML = method === "card" ? cardFields() : mobileFields(method);
+}
+
+function cardFields() {
+    return `<input id="p-card" placeholder="4242 4242 4242 4242" maxlength="19" oninput="formatCard(this)" autocomplete="cc-number">
+            <div style="display:flex;gap:0.5rem">
+                <input id="p-exp" placeholder="MM/YY" maxlength="5" oninput="formatExp(this)" style="flex:1" autocomplete="cc-exp">
+                <input id="p-cvv" placeholder="CVV" maxlength="4" type="password" style="flex:1" autocomplete="cc-csc">
+            </div>
+            <input id="p-name" placeholder="Cardholder name" autocomplete="cc-name">`;
+}
+
+function mobileFields(method) {
+    const label = method === "bkash" ? "bKash" : "Nagad";
+    return `<input id="p-mobile" placeholder="01XXXXXXXXX" maxlength="11">
+            <p style="font-size:0.75rem;color:var(--text-dim);margin:-0.3rem 0 0.5rem">Enter your ${label} number. A demo OTP will be simulated.</p>`;
+}
+
+function formatCard(el) {
+    let v = el.value.replace(/\D/g, "").slice(0, 16);
+    el.value = v.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExp(el) {
+    let v = el.value.replace(/\D/g, "").slice(0, 4);
+    if (v.length >= 3) v = v.slice(0, 2) + "/" + v.slice(2);
+    el.value = v;
+}
+
+async function processPayment() {
+    const btn = document.getElementById("pay-btn");
+    const errEl = document.getElementById("pay-err");
+    btn.disabled = true;
+    btn.textContent = "Processing...";
+    btn.style.opacity = "0.6";
+
+    // Simulate processing delay
+    await new Promise(r => setTimeout(r, 1500));
+
+    const payload = { booking_id: lastBooking.booking_id, method: payMethod };
+    if (payMethod === "card") {
+        payload.card_number = document.getElementById("p-card")?.value || "";
+        if (!payload.card_number.replace(/\s/g, "")) {
+            errEl.textContent = "Enter card number";
+            resetPayBtn(btn); return;
+        }
+    } else {
+        payload.card_number = "5000000000000001"; // dummy for mobile methods
+        const mobile = document.getElementById("p-mobile")?.value || "";
+        if (!mobile || mobile.length < 11) {
+            errEl.textContent = "Enter valid mobile number";
+            resetPayBtn(btn); return;
+        }
+    }
+
+    try {
+        const data = await api("/api/pay", { method: "POST", body: JSON.stringify(payload) });
+        lastBooking.transaction_id = data.transaction_id;
+        lastBooking.payment_method = data.method;
+        navigate("bookingConfirm");
+    } catch (e) {
+        errEl.textContent = e.message;
+        resetPayBtn(btn);
+    }
+}
+
+function resetPayBtn(btn) {
+    btn.disabled = false;
+    btn.textContent = `Pay ৳${Number(lastBooking.total).toFixed(2)}`;
+    btn.style.opacity = "1";
+}
+
 function renderBookingConfirm() {
     if (!lastBooking) { navigate("events"); return; }
+    const b = lastBooking;
     app.innerHTML = `<div class="card booking-confirm" style="max-width:460px;margin:2rem auto">
         <div class="check-icon">✅</div>
         <h2>Booking Confirmed!</h2>
-        <p style="color:var(--text);margin:0.5rem 0">${esc(lastBooking.title)}</p>
-        <p>Tickets: ${lastBooking.quantity} · Total: ৳${lastBooking.total}</p>
-        <p style="font-size:0.8rem;color:var(--text-dim);margin-top:0.5rem">Booking #${lastBooking.booking_id}</p>
-        <div style="display:flex;gap:0.5rem;margin-top:1.5rem;justify-content:center">
+        <p style="color:var(--text);margin:0.5rem 0;font-size:0.95rem">${esc(b.title)}</p>
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin:1rem 0;text-align:left">
+            <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem"><span style="color:var(--text-dim);font-size:0.78rem">Tickets</span><span style="font-size:0.82rem">${b.quantity}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem"><span style="color:var(--text-dim);font-size:0.78rem">Total Paid</span><span style="font-size:0.82rem;color:var(--gold);font-weight:600">৳${Number(b.total).toFixed(2)}</span></div>
+            ${b.transaction_id ? `<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem"><span style="color:var(--text-dim);font-size:0.78rem">Transaction</span><span style="font-size:0.75rem;font-family:monospace;color:var(--text-dim)">${b.transaction_id}</span></div>` : ""}
+            ${b.payment_method ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-dim);font-size:0.78rem">Method</span><span style="font-size:0.78rem;text-transform:uppercase">${esc(b.payment_method)}</span></div>` : ""}
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-dim)">Booking #${b.booking_id}</p>
+        <div style="display:flex;gap:0.5rem;margin-top:1.25rem;justify-content:center">
             <button class="ghost" onclick="navigate('bookings')">My Bookings</button>
-            <button class="primary" onclick="navigate('events')">Browse More</button>
+            <button class="primary" onclick="navigate('events')">Done</button>
         </div>
     </div>`;
 }
@@ -337,16 +452,28 @@ async function renderBookings() {
             list.innerHTML = emptyState("🎫", "No bookings yet", "Browse Events", "navigate('events')");
             return;
         }
-        list.innerHTML = bookings.map(b => `
-            <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
+        list.innerHTML = bookings.map(b => {
+            const statusTag = b.status === 'pending_payment'
+                ? '<span class="tag" style="background:rgba(200,170,80,0.2);color:var(--gold)">⏳ Pending Payment</span>'
+                : '<span class="tag free-tag">✓ Confirmed</span>';
+            const actionBtn = b.status === 'pending_payment'
+                ? `<button class="primary" style="font-size:0.75rem;padding:0.3rem 0.7rem" onclick="resumePayment(${b.id},'${esc(b.title)}',${b.quantity},${b.price})">Pay Now</button>`
+                : `<button class="danger" onclick="cancelBooking(${b.id})">Cancel</button>`;
+            return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
                 <div style="flex:1;min-width:200px">
                     <h2>${esc(b.title)}</h2>
-                    <div class="meta"><span class="tag">📅 ${formatDate(b.date)}</span><span class="tag">📍 ${esc(b.location)}</span></div>
+                    <div class="meta"><span class="tag">📅 ${formatDate(b.date)}</span><span class="tag">📍 ${esc(b.location)}</span>${statusTag}</div>
                     <p style="margin-top:0.3rem">Tickets: ${b.quantity} · Total: <strong>৳${(b.price * b.quantity).toFixed(2)}</strong></p>
                 </div>
-                <button class="danger" onclick="cancelBooking(${b.id})">Cancel</button>
-            </div>`).join("");
+                ${actionBtn}
+            </div>`;
+        }).join("");
     } catch { document.getElementById("bookings-list").innerHTML = `<p class="error">Failed to load bookings</p>`; }
+}
+
+function resumePayment(bookingId, title, qty, price) {
+    lastBooking = { booking_id: bookingId, title, quantity: qty, total: price * qty, free: false };
+    navigate("payment");
 }
 
 async function cancelBooking(id) {
