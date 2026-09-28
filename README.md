@@ -5,3 +5,8 @@ git clone https://github.com/AminulIslamSifat/Event-Manager
 cd Event-Manager
 python server.py
 ```
+
+Website at
+```
+http://localhost:9000
+```
