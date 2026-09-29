@@ -426,3 +426,110 @@ async function loadEvents() {
     renderPagination(data.pages);
   } catch {
     grid.innerHTML = `<div class="empty-state"><p>Couldn't load events. Try again.</p></div>`;
+  }
+}
+
+function syncCategoryFilter(categories = []) {
+  const select = document.getElementById("cat-filter");
+  if (!select) return;
+  select.innerHTML =
+    `<option value="All">All categories</option>` +
+    categories.map((c) => `<option value="${esc(c)}" ${c === filterCategory ? "selected" : ""}>${esc(c)}</option>`).join("");
+}
+
+function renderPagination(totalPages) {
+  const box = document.getElementById("pagination");
+  if (totalPages <= 1) return void (box.innerHTML = "");
+
+  const pageButton = (label, page, { active = false, disabled = false } = {}) =>
+    `<button ${disabled ? "disabled" : ""} class="${active ? "active" : ""}"
+       onclick="goToPage(${page})">${label}</button>`;
+
+  const parts = [pageButton("←", currentPage - 1, { disabled: currentPage <= 1 })];
+
+  for (let i = 1; i <= totalPages; i++) {
+    // Collapse far-away pages into an ellipsis
+    const far = totalPages > 7 && Math.abs(i - currentPage) > 2 && i !== 1 && i !== totalPages;
+    if (far) {
+      if (i === 2 || i === totalPages - 1) parts.push(`<button disabled>…</button>`);
+      continue;
+    }
+    parts.push(pageButton(i, i, { active: i === currentPage }));
+  }
+
+  parts.push(pageButton("→", currentPage + 1, { disabled: currentPage >= totalPages }));
+  box.innerHTML = parts.join("");
+}
+
+function goToPage(page) {
+  currentPage = page;
+  loadEvents();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- 12. Event detail ---------- */
+
+async function renderDetail(id) {
+  app.innerHTML = `<div class="skeleton" style="height:420px"></div>`;
+
+  let event;
+  try {
+    event = await api(`/api/events/${id}`);
+  } catch {
+    app.innerHTML = `<div class="empty-state"><p>Event not found.</p></div>`;
+    return;
+  }
+
+  const { text, free } = priceLabel(event.price);
+  const hero = event.image_url
+    ? `<img src="${esc(event.image_url)}" alt="" onerror="this.remove()">`
+    : categoryIcon(event.category);
+
+  const bookingForm = currentUser?.logged_in
+    ? `<div class="booking-bar">
+         <label class="muted" style="font-size:0.82rem">Qty</label>
+         <input id="qty" type="number" value="1" min="1" max="${event.tickets}">
+         <button class="primary btn-grow" onclick="bookTicket(${event.id})">Book now</button>
+       </div>
+       <div id="err" class="error" style="margin-top:0.75rem"></div>`
+    : `<p class="form-links" style="margin-top:1.5rem">
+         <a onclick="navigate('login')">Sign in</a> to book tickets
+       </p>`;
+
+  app.innerHTML = `
+    <button class="back-btn" onclick="navigate('events')">← All events</button>
+    <div style="max-width:720px;margin:0 auto">
+      <div class="detail-hero">${hero}</div>
+      <h1 class="display detail-title">${esc(event.title)}</h1>
+      <div class="meta">
+        <span class="tag">📅 ${formatDate(event.date)}</span>
+        <span class="tag">📍 ${esc(event.location)}</span>
+        <span class="tag">${esc(event.category || "General")}</span>
+      </div>
+      <p class="detail-desc">${esc(event.description)}</p>
+      <div class="flex-between" style="padding-top:1.25rem;border-top:1px solid var(--line)">
+        <div>
+          <span class="price${free ? " free" : ""}" style="font-size:1.3rem">${text}</span>
+          <span class="muted" style="font-size:0.82rem;margin-left:0.6rem">${event.tickets} tickets available</span>
+        </div>
+        <span class="muted" style="font-size:0.78rem">Hosted by ${esc(event.creator)}</span>
+      </div>
+      ${bookingForm}
+    </div>`;
+}
+
+async function bookTicket(eventId) {
+  const quantity = parseInt(val("qty"), 10);
+  if (!quantity || quantity < 1) return;
+
+  try {
+    const booking = await api("/api/book", {
+      method: "POST",
+      body: JSON.stringify({ event_id: eventId, quantity }),
+    });
+    // The API doesn't echo event_id back, so remember it for the back button.
+    lastBooking = { ...booking, event_id: eventId };
+
+    if (booking.free) {
+      toast("Booked — see you there!");
+      navigate("bookingConfirm");
