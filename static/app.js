@@ -533,3 +533,110 @@ async function bookTicket(eventId) {
     if (booking.free) {
       toast("Booked — see you there!");
       navigate("bookingConfirm");
+    } else {
+      navigate("payment");
+    }
+  } catch (e) {
+    const errEl = document.getElementById("err");
+    if (errEl) errEl.textContent = e.message;
+  }
+}
+
+/* ---------- 13. Payment ---------- */
+
+function cardFields() {
+  return `
+    <input id="p-card" placeholder="4242 4242 4242 4242" maxlength="19"
+           oninput="formatCard(this)" autocomplete="cc-number">
+    <div style="display:flex;gap:0.6rem">
+      <input id="p-exp" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)"
+             autocomplete="cc-exp">
+      <input id="p-cvv" placeholder="CVV" maxlength="4" type="password" autocomplete="cc-csc">
+    </div>
+    <input id="p-name" placeholder="Name on card" autocomplete="cc-name">`;
+}
+
+function mobileFields(method) {
+  const label = method === "bkash" ? "bKash" : "Nagad";
+  return `
+    <input id="p-mobile" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric">
+    <p class="muted" style="font-size:0.75rem;margin-top:-0.4rem">
+      Enter your ${label} number — a demo OTP is simulated.
+    </p>`;
+}
+
+function renderPayment() {
+  if (!lastBooking || lastBooking.free) return navigate("events");
+  const b = lastBooking;
+
+  app.innerHTML = `
+    <button class="back-btn" onclick="goBackFromCheckout()">← Back</button>
+    <div class="auth-wrap" style="margin-top:0">
+      <h1 class="display" style="font-size:1.6rem">Checkout</h1>
+      <p class="sub">Complete payment to confirm your tickets.</p>
+
+      <div class="card">
+        <div class="summary">
+          <div class="summary-row"><span class="k">Event</span><span>${esc(b.title)}</span></div>
+          <div class="summary-row"><span class="k">Tickets</span><span>${b.quantity}</span></div>
+          <div class="summary-row total"><span>Total</span><span class="v">৳${Number(b.total).toFixed(2)}</span></div>
+        </div>
+
+        <div class="pay-methods" id="pay-methods">
+          <button class="active" data-method="card"  onclick="selectPayMethod('card')">💳 Card</button>
+          <button data-method="bkash" onclick="selectPayMethod('bkash')">📱 bKash</button>
+          <button data-method="nagad" onclick="selectPayMethod('nagad')">📱 Nagad</button>
+        </div>
+
+        <div id="err" class="error"></div>
+        <div id="pay-fields">${cardFields()}</div>
+
+        <button class="primary" id="pay-btn" style="width:100%;margin-top:0.5rem"
+                onclick="processPayment()">Pay ৳${Number(b.total).toFixed(2)}</button>
+
+        <p class="muted" style="font-size:0.72rem;text-align:center;margin-top:1rem;line-height:1.6">
+          Demo mode — no real charges.<br>Visa starts with 4, Mastercard with 5. Cards ending 0000 are declined.
+        </p>
+      </div>
+    </div>`;
+}
+
+/** Return to the event page when we know it, otherwise the event list. */
+function goBackFromCheckout() {
+  if (lastBooking?.event_id) navigate("detail", lastBooking.event_id);
+  else navigate("events");
+}
+
+function selectPayMethod(method) {
+  payMethod = method;
+  document.querySelectorAll("#pay-methods button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.method === method);
+  });
+  document.getElementById("pay-fields").innerHTML =
+    method === "card" ? cardFields() : mobileFields(method);
+}
+
+function formatCard(input) {
+  const digits = input.value.replace(/\D/g, "").slice(0, 16);
+  input.value = digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExpiry(input) {
+  let digits = input.value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length >= 3) digits = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  input.value = digits;
+}
+
+function resetPayButton() {
+  const btn = document.getElementById("pay-btn");
+  if (!btn) return;
+  btn.disabled = false;
+  btn.textContent = `Pay ৳${Number(lastBooking.total).toFixed(2)}`;
+}
+
+async function processPayment() {
+  const btn   = document.getElementById("pay-btn");
+  const errEl = document.getElementById("err");
+  errEl.textContent = "";
+
+  const payload = { booking_id: lastBooking.booking_id, method: payMethod };
