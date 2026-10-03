@@ -640,3 +640,110 @@ async function processPayment() {
   errEl.textContent = "";
 
   const payload = { booking_id: lastBooking.booking_id, method: payMethod };
+
+  if (payMethod === "card") {
+    payload.card_number = val("p-card");
+    if (!payload.card_number.replace(/\s/g, "")) {
+      return void (errEl.textContent = "Enter your card number");
+    }
+  } else {
+    payload.card_number = "5000000000000001"; // placeholder for mobile wallets
+    const mobile = val("p-mobile");
+    if (mobile.length < 11) return void (errEl.textContent = "Enter a valid mobile number");
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Processing…";
+  await new Promise((r) => setTimeout(r, 1500));
+
+  try {
+    const result = await api("/api/pay", { method: "POST", body: JSON.stringify(payload) });
+    lastBooking.transaction_id = result.transaction_id;
+    lastBooking.payment_method = result.method;
+    navigate("bookingConfirm");
+  } catch (e) {
+    errEl.textContent = e.message;
+    resetPayButton();
+  }
+}
+
+/* ---------- 14. Booking confirmation ---------- */
+
+function renderBookingConfirm() {
+  if (!lastBooking) return navigate("events");
+  const b = lastBooking;
+
+  const rows = [
+    `<div class="summary-row"><span class="k">Tickets</span><span>${b.quantity}</span></div>`,
+    `<div class="summary-row"><span class="k">Total paid</span><span class="v" style="color:var(--gold);font-weight:600">৳${Number(b.total).toFixed(2)}</span></div>`,
+  ];
+  if (b.transaction_id)  rows.push(`<div class="summary-row"><span class="k">Transaction</span><span class="muted" style="font-family:monospace;font-size:0.75rem">${esc(b.transaction_id)}</span></div>`);
+  if (b.payment_method)  rows.push(`<div class="summary-row"><span class="k">Method</span><span>${esc(b.payment_method).toUpperCase()}</span></div>`);
+
+  app.innerHTML = `
+    <div class="card confirm-box" style="max-width:480px;margin:2rem auto">
+      <div class="confirm-check">✓</div>
+      <h2 class="display">You're in!</h2>
+      <p class="muted" style="margin-bottom:1.5rem">${esc(b.title)}</p>
+      <div class="summary" style="text-align:left">${rows.join("")}</div>
+      <p class="muted" style="font-size:0.75rem;margin-bottom:1.5rem">Booking #${b.booking_id}</p>
+      <div style="display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap">
+        <button class="ghost" onclick="navigate('bookings')">My tickets</button>
+        <button class="primary" onclick="navigate('events')">Browse more</button>
+      </div>
+    </div>`;
+}
+
+/* ---------- 15. My bookings ---------- */
+
+async function renderBookings() {
+  if (!currentUser?.logged_in) return navigate("login");
+
+  app.innerHTML = `
+    <div class="view-head">
+      <div class="eyebrow">Your tickets</div>
+      <h1 class="display">My bookings</h1>
+    </div>
+    <div id="bookings-list">${skeletonGrid(3)}</div>`;
+
+  const list = document.getElementById("bookings-list");
+
+  try {
+    const bookings = await api("/api/bookings");
+
+    if (!bookings.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🎫</div>
+          <p>You haven't booked anything yet.</p>
+          <button class="primary" onclick="navigate('events')">Browse events</button>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = bookings.map(bookingRow).join("");
+  } catch {
+    list.innerHTML = `<div class="empty-state"><p>Couldn't load your bookings.</p></div>`;
+  }
+}
+
+function bookingRow(b) {
+  const pending = b.status === "pending_payment";
+  const statusTag = pending
+    ? `<span class="tag gold">⏳ Pending payment</span>`
+    : `<span class="tag success">✓ Confirmed</span>`;
+
+  const action = pending
+    ? `<button class="primary" data-action="resume" data-booking='${JSON.stringify({ id: b.id, title: b.title, quantity: b.quantity, price: b.price, event_id: b.event_id })}'>Pay now</button>`
+    : `<button class="danger" data-action="cancel" data-id="${b.id}">Cancel</button>`;
+
+  return `
+    <div class="card list-row">
+      <div class="info">
+        <h3 style="margin-bottom:0.5rem">${esc(b.title)}</h3>
+        <div class="meta">
+          <span class="tag">📅 ${formatDate(b.date)}</span>
+          <span class="tag">📍 ${esc(b.location)}</span>
+          ${statusTag}
+        </div>
+        <p class="muted" style="font-size:0.82rem;margin-top:0.6rem">
