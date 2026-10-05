@@ -747,3 +747,110 @@ function bookingRow(b) {
           ${statusTag}
         </div>
         <p class="muted" style="font-size:0.82rem;margin-top:0.6rem">
+          ${b.quantity} ticket${b.quantity > 1 ? "s" : ""} ·
+          <strong style="color:var(--text)">৳${(b.price * b.quantity).toFixed(2)}</strong>
+        </p>
+      </div>
+      <div class="actions">${action}</div>
+    </div>`;
+}
+
+/** Delegated handler — avoids quote-escaping inside inline onclick. */
+function onBookingAction(clickEvent) {
+  const button = clickEvent.target.closest("button[data-action]");
+  if (!button) return;
+
+  if (button.dataset.action === "cancel") {
+    cancelBooking(Number(button.dataset.id));
+  } else if (button.dataset.action === "resume") {
+    const info = JSON.parse(button.dataset.booking);
+    lastBooking = {
+      booking_id: info.id,
+      title: info.title,
+      quantity: info.quantity,
+      total: info.price * info.quantity,
+      free: false,
+      event_id: info.event_id,
+    };
+    navigate("payment");
+  }
+}
+
+async function cancelBooking(bookingId) {
+  const confirmed = await confirmModal("Cancel booking", "Your tickets will be released back to the event.");
+  if (!confirmed) return;
+
+  try {
+    await api(`/api/bookings/${bookingId}`, { method: "DELETE" });
+    toast("Booking cancelled");
+    renderBookings();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+/* ---------- 16. Profile ---------- */
+
+function renderProfile() {
+  if (!currentUser?.logged_in) return navigate("login");
+
+  app.innerHTML = `
+    <div class="auth-wrap" style="margin-top:0">
+      <h1 class="display" style="font-size:1.75rem">@${esc(currentUser.username)}</h1>
+      <p class="sub" style="text-transform:capitalize">${esc(currentUser.role)} account</p>
+
+      <div class="card">
+        <h2 style="font-size:1.05rem;margin-bottom:1.25rem">Change password</h2>
+        <div id="err" class="error"></div>
+        <label class="field-label" for="old-pw">Current password</label>
+        <input id="old-pw" type="password" placeholder="••••••••" autocomplete="current-password">
+        <label class="field-label" for="new-pw">New password</label>
+        <input id="new-pw" type="password" placeholder="at least 4 characters" autocomplete="new-password">
+        <button class="primary" style="width:100%;margin-top:0.5rem" onclick="changePassword()">Update password</button>
+      </div>
+    </div>`;
+
+  onEnter("old-pw", changePassword);
+  onEnter("new-pw", changePassword);
+}
+
+async function changePassword() {
+  const oldPassword = val("old-pw");
+  const newPassword = val("new-pw");
+  const errEl = document.getElementById("err");
+  errEl.textContent = "";
+
+  if (!oldPassword || !newPassword) return void (errEl.textContent = "Fill in both fields");
+
+  try {
+    await api("/api/change-password", {
+      method: "POST",
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+    toast("Password updated");
+    document.getElementById("old-pw").value = "";
+    document.getElementById("new-pw").value = "";
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
+/* ---------- 17. Admin dashboard ---------- */
+
+async function renderAdmin() {
+  if (currentUser?.role !== "admin") return navigate("events");
+
+  app.innerHTML = `<div class="skeleton" style="height:320px"></div>`;
+
+  try {
+    const [stats, list] = await Promise.all([
+      api("/api/admin/stats"),
+      api("/api/events?page=1&sort=date_desc"),
+    ]);
+
+    const popular = stats.popular.length
+      ? `<div class="card" style="margin-bottom:1.5rem">
+           <h3 style="font-size:0.95rem;margin-bottom:0.75rem">Top events</h3>
+           ${stats.popular.map((p) => `
+             <div class="summary-row" style="border-bottom:1px solid var(--line);padding:0.5rem 0">
+               <span>${esc(p.title)}</span>
