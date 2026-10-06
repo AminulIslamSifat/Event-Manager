@@ -854,3 +854,110 @@ async function renderAdmin() {
            ${stats.popular.map((p) => `
              <div class="summary-row" style="border-bottom:1px solid var(--line);padding:0.5rem 0">
                <span>${esc(p.title)}</span>
+               <span class="tag">${p.sold} sold</span>
+             </div>`).join("")}
+         </div>`
+      : "";
+
+    const eventRows = list.events.map((e) => `
+      <div class="card list-row">
+        <div class="info">
+          <strong>${esc(e.title)}</strong>
+          <p class="muted" style="font-size:0.8rem;margin-top:0.3rem">
+            ${formatDate(e.date)} · ${e.tickets} left · ${esc(e.category || "General")}
+          </p>
+        </div>
+        <div class="actions">
+          <button class="ghost" onclick="navigate('editEvent',${e.id})">Edit</button>
+          <button class="danger" onclick="deleteEvent(${e.id})">Delete</button>
+        </div>
+      </div>`).join("");
+
+    app.innerHTML = `
+      <div class="view-head flex-between">
+        <div>
+          <div class="eyebrow">Admin</div>
+          <h1 class="display">Dashboard</h1>
+        </div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+          <button class="ghost" onclick="exportBookingsCsv()">Export CSV</button>
+          <button class="primary" onclick="navigate('createEvent')">+ New event</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="card stat-card"><div class="stat-value">${stats.total_events}</div><div class="stat-label">Events</div></div>
+        <div class="card stat-card"><div class="stat-value">${stats.total_bookings}</div><div class="stat-label">Bookings</div></div>
+        <div class="card stat-card"><div class="stat-value">৳${Number(stats.revenue).toFixed(0)}</div><div class="stat-label">Revenue</div></div>
+      </div>
+
+      ${popular}
+
+      <h3 style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin:2rem 0 1rem">All events</h3>
+      ${eventRows || `<div class="empty-state"><p>No events yet.</p></div>`}`;
+  } catch {
+    app.innerHTML = `<div class="empty-state"><p>Couldn't load the dashboard.</p></div>`;
+  }
+}
+
+async function deleteEvent(eventId) {
+  const confirmed = await confirmModal("Delete event", "This also removes every booking for it. This cannot be undone.");
+  if (!confirmed) return;
+
+  try {
+    await api(`/api/events/${eventId}`, { method: "DELETE" });
+    toast("Event deleted");
+    renderAdmin();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function exportBookingsCsv() {
+  const res  = await fetch("/api/export-bookings", { headers: { "X-CSRF-Token": csrfToken } });
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "bookings.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- 18. Create / edit event ---------- */
+
+const EVENT_CATEGORIES = ["General", "Tech", "Music", "Art", "Sports", "Food", "Education"];
+
+function eventFormHtml(heading, event = {}) {
+  const categoryOptions = EVENT_CATEGORIES
+    .map((c) => `<option value="${c}" ${(event.category || "General") === c ? "selected" : ""}>${c}</option>`)
+    .join("");
+
+  return `
+    <div class="auth-wrap" style="max-width:560px">
+      <h1 class="display" style="font-size:1.6rem;margin-bottom:1.5rem">${heading}</h1>
+      <div class="card">
+        <div id="err" class="error"></div>
+
+        <label class="field-label">Title</label>
+        <input id="f-title" placeholder="Event name" value="${esc(event.title || "")}">
+
+        <label class="field-label">Description</label>
+        <textarea id="f-desc" rows="4" placeholder="What should people expect?">${esc(event.description || "")}</textarea>
+
+        <label class="field-label">Category</label>
+        <select id="f-cat">${categoryOptions}</select>
+
+        <label class="field-label">Date &amp; time</label>
+        <input id="f-date" type="datetime-local" value="${esc(event.date || "")}">
+
+        <label class="field-label">Location</label>
+        <input id="f-loc" placeholder="Venue, city" value="${esc(event.location || "")}">
+
+        <div style="display:flex;gap:0.75rem">
+          <div style="flex:1">
+            <label class="field-label">Price (৳)</label>
+            <input id="f-price" type="number" min="0" step="0.01" placeholder="0 for free" value="${event.price ?? ""}">
+          </div>
+          <div style="flex:1">
+            <label class="field-label">Tickets</label>
