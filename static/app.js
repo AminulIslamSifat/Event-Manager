@@ -961,3 +961,101 @@ function eventFormHtml(heading, event = {}) {
           </div>
           <div style="flex:1">
             <label class="field-label">Tickets</label>
+            <input id="f-tickets" type="number" min="1" placeholder="100" value="${event.tickets ?? ""}">
+          </div>
+        </div>
+
+        <label class="field-label">Image URL <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input id="f-img" placeholder="https://…" value="${esc(event.image_url || "")}">
+
+        <button class="primary" id="submit-btn" style="width:100%;margin-top:0.5rem">Save event</button>
+      </div>
+    </div>`;
+}
+
+function readEventForm() {
+  return {
+    title:       val("f-title"),
+    description: val("f-desc"),
+    category:    val("f-cat"),
+    date:        val("f-date"),
+    location:    val("f-loc"),
+    price:       parseFloat(val("f-price")) || 0,
+    tickets:     parseInt(val("f-tickets"), 10) || 0,
+    image_url:   val("f-img"),
+  };
+}
+
+function renderCreateEvent() {
+  app.innerHTML = eventFormHtml("Create an event");
+
+  document.getElementById("submit-btn").onclick = async () => {
+    try {
+      await api("/api/events", { method: "POST", body: JSON.stringify(readEventForm()) });
+      toast("Event created");
+      navigate("admin");
+    } catch (e) {
+      document.getElementById("err").textContent = e.message;
+    }
+  };
+}
+
+async function renderEditEvent(eventId) {
+  try {
+    const event = await api(`/api/events/${eventId}`);
+    app.innerHTML = eventFormHtml("Edit event", event);
+
+    document.getElementById("submit-btn").onclick = async () => {
+      try {
+        await api(`/api/events/${eventId}`, { method: "PUT", body: JSON.stringify(readEventForm()) });
+        toast("Event updated");
+        navigate("admin");
+      } catch (e) {
+        document.getElementById("err").textContent = e.message;
+      }
+    };
+  } catch {
+    app.innerHTML = `<div class="empty-state"><p>Event not found.</p></div>`;
+  }
+}
+
+/* ---------- 19. Boot ---------- */
+
+// Delegated listener for booking-row actions. Scoped to #app so it never
+// collides with the confirm modal's own data-action buttons in <body>.
+app.addEventListener("click", onBookingAction);
+
+// Brand click -> home
+document.querySelector(".brand").onclick = () => navigate("events");
+
+setupHeaderSearch();
+checkAuth();
+<!-- update 14400 -->
+<!-- update 57600 -->
+<!-- update 90000 -->
+<!-- update 97200 -->
+<!-- update 104400 -->
+<!-- update 111600 -->
+<!-- update 118800 -->
+<!-- update 126000 -->
+<!-- update 133200 -->
+<!-- update 140400 -->
+<!-- update 147600 -->
+<!-- update 154800 -->
+<!-- update 162000 -->
+<!-- update 169200 -->
+// renderEvents(data) { document.createElement pipeline }
+// addEventListener('click', handleCardSelect) delegation
+// helpers: createElement, appendChildren, toggleClass
+// paginate(items, page, limit) -> slice logic
+// createStore(initialState, reducers) pattern
+// sanitize(str) -> escape html entities, strip scripts
+// buildTrie(events), searchTrie(query) O(k) lookup
+// router.get('/api/events/:id', handler)
+// AbortController signal cleanup on rapid requests
+// rateLimit(fn, maxCalls, windowMs) throttle wrapper
+// service layer separation: EventService vs UiRenderer
+// try/catch with fallback ui state on fetch rejection
+// debounce(fn, 300ms) to reduce filter recalculations
+// logger.info/warn/error with timestamp context
+// wire all modules: state + router + ui + security
