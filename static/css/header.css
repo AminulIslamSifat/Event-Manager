@@ -1,0 +1,208 @@
+/* ============================================================
+   Header search — matches the markup in index.html
+   (<div class="search"><svg class="search-icon"><input id="nav-search">)
+   ============================================================ */
+
+.search {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--text-dim);
+  pointer-events: none;
+  transition: color 0.2s var(--ease);
+}
+
+#nav-search {
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.9rem 0.55rem 2.4rem;
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease),
+              box-shadow 0.25s var(--ease);
+}
+
+#nav-search::placeholder { color: var(--text-dim); }
+
+#nav-search:focus {
+  border-color: var(--gold-line);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 3px var(--gold-wash);
+}
+
+.search:focus-within .search-icon { color: var(--gold); }
+
+#nav-search::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* Header reflow on narrow screens: brand + nav on row 1, search on row 2 */
+@media (max-width: 860px) {
+  .header-inner { flex-wrap: wrap; gap: 0.7rem; }
+  .brand { order: 1; }
+  .nav-links { order: 2; margin-left: auto; }
+  .search { order: 3; flex-basis: 100%; max-width: 100%; }
+}
+
+/* Badge shown next to the username for admins */
+.nav-links button.user::after {
+  content: "";
+}
+
+/* Dashboard / admin sub-navigation */
+.subnav {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.subnav button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-family: inherit;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.subnav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+.subnav button.active { color: var(--gold); background: var(--gold-wash); }
+
+/* Compact stat strip used on the dashboard */
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.mini-stat {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 1rem;
+}
+
+.mini-stat .n {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.5rem;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.mini-stat .l {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+}
+/* ---------- Account chip: avatar + name in the top-right ---------- */
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0.7rem 0.28rem 0.28rem !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-pill) !important;
+  color: var(--text) !important;
+  transition: all 0.2s var(--ease) !important;
+}
+
+.account-chip:hover {
+  border-color: var(--gold-line) !important;
+  background: var(--gold-wash) !important;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #14110a;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-dim));
+  flex-shrink: 0;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.account-chip .chip-name {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+/* Larger avatar used on the profile page */
+.avatar-lg {
+  width: 72px;
+  height: 72px;
+  font-size: 1.6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #14110a;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-dim));
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  margin-bottom: 1.75rem;
+}
+
+.profile-head .who h1 { font-size: 1.6rem; margin-bottom: 0.15rem; }
+.profile-head .who .handle { color: var(--text-dim); font-size: 0.85rem; }
+
+/* Detail rows on the profile card */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.detail-item .k {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.detail-item .v { font-size: 0.88rem; color: var(--text); word-break: break-word; }
+.detail-item .v.empty { color: var(--text-dim); font-style: italic; }
+
+@media (max-width: 640px) {
+  .account-chip .chip-name { display: none; }
+  .account-chip { padding: 0.25rem !important; }
+}

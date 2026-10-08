@@ -1,0 +1,287 @@
+/* ============================================================
+   Production module styles
+   Budget panel, artist picker, tiers, toggles, status pills.
+   Loaded after style.css so it can lean on the same tokens.
+   ============================================================ */
+
+/* ---------- Form layout: fields left, budget stuck right ---------- */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* ---------- Form sections ---------- */
+.form-section {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 1.35rem;
+  margin-bottom: 1.25rem;
+  background: var(--card);
+}
+
+.form-section > h3 {
+  font-size: 0.95rem;
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.form-section > h3 .step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ---------- Budget panel ---------- */
+.budget-panel {
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 1.25rem;
+  position: sticky;
+  top: 5.5rem;
+}
+
+.budget-panel h3 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.83rem;
+  padding: 0.3rem 0;
+  color: var(--text-soft);
+}
+
+.budget-row .amount { color: var(--text); font-variant-numeric: tabular-nums; }
+.budget-row.sub { padding-left: 0.9rem; font-size: 0.78rem; color: var(--text-dim); }
+
+.budget-divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0.65rem 0;
+}
+
+.budget-row.total {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.budget-row.total .amount { color: var(--text); }
+
+.budget-result {
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--r-sm);
+  padding: 1rem;
+  margin-top: 0.9rem;
+  text-align: center;
+}
+
+.budget-result .label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+.budget-result .value {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.1rem;
+  line-height: 1.15;
+  color: var(--gold-bright);
+}
+
+.budget-result .hint { font-size: 0.72rem; color: var(--text-dim); }
+
+/* ---------- Artist picker ---------- */
+.artist-picker {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--input);
+}
+
+.artist-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+  font-size: 0.85rem;
+}
+
+.artist-option:last-child { border-bottom: none; }
+.artist-option:hover { background: rgba(255, 255, 255, 0.03); }
+.artist-option.selected { background: var(--gold-wash); }
+
+.artist-option input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.artist-option .name { flex: 1; }
+.artist-option .fee {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+.artist-option.selected .fee { color: var(--gold); }
+
+.picker-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.picker-toolbar input { margin: 0; font-size: 0.82rem; }
+
+/* ---------- Toggle switches ---------- */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-row .label { font-size: 0.85rem; }
+.toggle-row .hint { font-size: 0.74rem; color: var(--text-dim); }
+
+.switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: #26262a;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+.switch .track::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: transform 0.2s var(--ease), background 0.2s var(--ease);
+}
+.switch input:checked + .track { background: var(--gold-wash-2); }
+.switch input:checked + .track::before { transform: translateX(18px); background: var(--gold); }
+
+/* ---------- Tier editor ---------- */
+.tier-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 38px;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  align-items: center;
+}
+.tier-row input { margin: 0; }
+
+.tier-remove {
+  width: 38px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.tier-remove:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ---------- Status pills ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--r-pill);
+}
+.pill.published { color: var(--success); background: rgba(106, 171, 123, 0.12); border: 1px solid rgba(106, 171, 123, 0.3); }
+.pill.draft     { color: var(--gold);    background: var(--gold-wash);             border: 1px solid var(--gold-line); }
+
+/* ---------- Lineup chips (detail page) ---------- */
+.lineup { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.lineup .artist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  color: var(--gold-bright);
+}
+
+/* ---------- Reference-data admin table ---------- */
+.ref-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.ref-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-weight: 500;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--line-strong);
+}
+.ref-table td {
+  padding: 0.7rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.ref-table tr:last-child td { border-bottom: none; }
+.ref-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+.ref-table .num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .budget-panel { position: static; order: -1; }
+}
+
+@media (max-width: 640px) {
+  .tier-row { grid-template-columns: 1fr 1fr; }
+  .tier-row .tier-remove { grid-column: span 2; width: 100%; }
+  .ref-table { font-size: 0.78rem; }
+  .ref-table th, .ref-table td { padding: 0.5rem 0.3rem; }
+}

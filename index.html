@@ -8,7 +8,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230a0a0b%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-size=%2718%27 text-anchor=%27middle%27 fill=%27%23c9a94e%27 font-family=%27Georgia,serif%27%3EE%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/production.css">
 </head>
 <body>
 
@@ -16,7 +20,7 @@
 <header class="site-header">
   <div class="header-inner">
 
-    <a class="brand" onclick="navigate('events')">Event <em>Khujo</em></a>
+    <a class="brand" id="brand">Event <em>Khujo</em></a>
 
     <div class="search">
       <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -34,11 +38,6 @@
 <main id="app" class="app"></main>
 <div id="toast-container"></div>
 
-<script src="/static/app.js"></script>
+<script type="module" src="/static/js/main.js"></script>
 </body>
 </html>
-<!-- update 3600 -->
-<!-- update 28800 -->
-<!-- update 72000 -->
-<!-- feat: semantic header, main, section, footer structure -->
-<!-- modal: overlay + content wrapper for detail view -->
