@@ -202,7 +202,25 @@ def pull_all(db) -> int:
 
     suspend()
     pulled = 0
+
+    # Wipe children before parents, so no foreign key is ever left dangling.
+    delete_order = list(reversed(SYNCED_TABLES))
+
+    # Foreign keys are enforced per-connection, so they have to come off for
+    # the reload. The DELETE/INSERT sequence below restores consistency long
+    # before the pragma goes back on.
     try:
+        db.execute("PRAGMA foreign_keys = OFF")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        for table in delete_order:
+            try:
+                db.execute(f"DELETE FROM {table}")
+            except sqlite3.OperationalError:
+                pass  # table not created yet
+
         for table in SYNCED_TABLES:
             try:
                 docs = list(database[table].find({}))
@@ -221,7 +239,6 @@ def pull_all(db) -> int:
             column_list = ",".join(columns)
 
             try:
-                db.execute(f"DELETE FROM {table}")
                 db.executemany(
                     f"INSERT INTO {table} ({column_list}) VALUES ({placeholders})",
                     [tuple(doc.get(c) for c in columns) for doc in docs],
@@ -232,6 +249,10 @@ def pull_all(db) -> int:
 
         db.commit()
     finally:
+        try:
+            db.execute("PRAGMA foreign_keys = ON")
+        except sqlite3.OperationalError:
+            pass
         resume()
 
     return pulled

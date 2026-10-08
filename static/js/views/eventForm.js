@@ -105,8 +105,16 @@ function formHtml(event = {}) {
           <label class="field-label">Date &amp; time</label>
           <input id="f-date" type="datetime-local" value="${esc(event.date || "")}">
 
-          <label class="field-label">Image URL <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
-          <input id="f-img" placeholder="https://…" value="${esc(event.image_url || "")}">
+          <label class="field-label">Cover image <span style="text-transform:none;letter-spacing:0">(optional — a default is used otherwise)</span></label>
+          <input type="hidden" id="f-img" value="${esc(event.image_is_default ? "" : (event.image_url || ""))}">
+          <div class="upload-row">
+            <input type="file" id="f-image-file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <button type="button" class="ghost" id="f-image-clear" style="display:none">Remove</button>
+          </div>
+          <div id="f-image-status" class="muted" style="font-size:0.75rem;margin-top:0.35rem"></div>
+          <img id="f-image-preview" class="upload-preview" alt=""
+               src="${esc(event.image_is_default ? "" : (event.image_url || ""))}"
+               style="${event.image_is_default || !event.image_url ? "display:none" : ""}">
         </section>
 
         <!-- 2. Venue -->
@@ -239,6 +247,69 @@ function showVenueLocation(name, address) {
                  (address ? ` — ${esc(address)}` : "");
 }
 
+/**
+ * Wire the cover-image picker.
+ *
+ * Uploads as soon as a file is chosen and stores the returned URL in the
+ * hidden #f-img field, so the rest of the form never deals with files.
+ */
+function wireImageUpload() {
+  const fileInput = document.getElementById("f-image-file");
+  const hidden = document.getElementById("f-img");
+  const clearBtn = document.getElementById("f-image-clear");
+  const preview = document.getElementById("f-image-preview");
+  const status = document.getElementById("f-image-status");
+  if (!fileInput || !hidden) return;
+
+  const showPreview = (url) => {
+    if (url) {
+      preview.src = url;
+      preview.style.display = "";
+      clearBtn.style.display = "";
+    } else {
+      preview.removeAttribute("src");
+      preview.style.display = "none";
+      clearBtn.style.display = "none";
+    }
+  };
+
+  showPreview(hidden.value);
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    status.style.color = "";
+    status.textContent = "Uploading...";
+
+    const body = new FormData();
+    body.append("image", file);
+    body.append("csrf_token", store.csrf);
+
+    try {
+      const res = await fetch("/api/events/upload-image", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      hidden.value = data.image_url;
+      showPreview(data.image_url);
+      status.style.color = "var(--success)";
+      status.textContent = "Uploaded";
+    } catch (err) {
+      status.style.color = "var(--danger)";
+      status.textContent = err.message;
+      fileInput.value = "";
+    }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    hidden.value = "";
+    fileInput.value = "";
+    status.textContent = "";
+    showPreview("");
+  });
+}
+
 /** Wire the venue dropdown so it fills fee/capacity/name automatically. */
 function wireVenueSelect() {
   const select = document.getElementById("f-venue");
@@ -274,6 +345,7 @@ async function mountForm(event = {}) {
   // Editing an existing event: reflect its stored venue/location.
   if (event?.id) showVenueLocation(event.venue_name || event.location, "");
   wireTierEditor();
+  wireImageUpload();
 
   const panel = document.getElementById("budget-panel");
   const recalc = wireBudgetInputs(panel, {

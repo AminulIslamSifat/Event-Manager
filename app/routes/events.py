@@ -15,6 +15,7 @@ from ..auth import admin_required, check_csrf, current_user
 from ..db import get_db
 from ..pricing import BudgetInput, calculate_budget, suggested_tier_prices
 from ..serializers import artist_rows, event_to_dict, tier_rows
+from ..uploads import save_image
 
 bp = Blueprint("events", __name__, url_prefix="/api/events")
 
@@ -427,3 +428,34 @@ def get_lineup(event_id: int):
         "artists": artist_rows(db, event_id),
         "tiers": tier_rows(db, event_id),
     })
+
+
+# ---------------------------------------------------------------------------
+# Cover image upload
+# ---------------------------------------------------------------------------
+
+@bp.post("/upload-image")
+def upload_image():
+    """
+    Accept an image file and return its public URL.
+
+    Multipart, so this endpoint deliberately skips the JSON CSRF header
+    check — it requires a session instead, and the token travels in the form
+    body as `csrf_token`.
+    """
+    user = current_user()
+    if not user:
+        return jsonify({"error": "sign in to upload an image"}), 401
+
+    token = request.form.get("csrf_token", "")
+    if not token or token != session.get("csrf"):
+        return jsonify({"error": "invalid csrf token"}), 403
+
+    try:
+        url = save_image(request.files.get("image"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:                      # noqa: BLE001 - surface clearly
+        return jsonify({"error": f"Upload failed: {exc}"}), 500
+
+    return jsonify({"ok": True, "image_url": url})

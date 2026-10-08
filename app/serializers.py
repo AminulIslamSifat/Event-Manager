@@ -6,7 +6,7 @@ Kept separate so every endpoint returns events in exactly the same shape.
 
 import sqlite3
 
-from . import pricing
+from . import pricing, thumbs
 
 
 def artist_rows(db: sqlite3.Connection, event_id: int) -> list[dict]:
@@ -70,6 +70,14 @@ def event_to_dict(row: sqlite3.Row, db=None, *, detailed: bool = False) -> dict:
     the list view doesn't need.
     """
     data = dict(row)
+
+    # Every event gets a picture: the uploaded one when present, otherwise the
+    # default illustration for its category.
+    if not (data.get("image_url") or "").strip():
+        data["image_url"] = thumbs.thumbnail_url(data.get("category"))
+        data["image_is_default"] = True
+    else:
+        data["image_is_default"] = False
 
     artist_fees = None
     if detailed and db is not None:

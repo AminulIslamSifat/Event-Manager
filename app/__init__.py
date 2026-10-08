@@ -56,6 +56,12 @@ def create_app(config: dict | None = None) -> Flask:
         if sync.enabled():
             sync.push_tables(db.get_db(), sync.SYNCED_TABLES)
 
+    # --- default thumbnails, regenerated when their definitions change ---
+    from . import thumbs
+    written = thumbs.write_thumbnails(app.static_folder)
+    if written:
+        print(f"[thumbs] Wrote {written} default thumbnail(s).")
+
     # --- blueprints ---
     from .routes import register_blueprints
     register_blueprints(app)
