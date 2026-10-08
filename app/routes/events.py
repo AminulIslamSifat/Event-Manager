@@ -1,17 +1,13 @@
-"""
-Event CRUD plus the budget calculator endpoint.
-
-Access model (per spec):
-  * Any logged-in user can CREATE an event.
-  * A new event starts as `pending_payment` — the organiser must pay the
-    platform fee (dummy gate for now) before it goes `published`.
-  * Only `published` events appear in the public listing.
-  * Only the organiser or an admin may edit/delete an event.
-"""
+# event CRUD + budget quote.
+#
+#  - any logged-in user can create
+#  - new events start pending_payment, pay the fee to go published
+#  - only published show in the public list
+#  - only owner or admin can edit/delete
 
 from flask import Blueprint, jsonify, request, session
 
-from ..auth import admin_required, check_csrf, current_user
+from ..auth import check_csrf, current_user
 from ..db import get_db
 from ..pricing import BudgetInput, calculate_budget, suggested_tier_prices
 from ..serializers import artist_rows, event_to_dict, tier_rows
@@ -30,19 +26,17 @@ SORT_COLUMNS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+# helpers
 
 def _can_manage(event_row, user) -> bool:
-    """True when the user owns the event or is an admin."""
+    # owner or admin
     if not user:
         return False
     return user["role"] == "admin" or event_row["created_by"] == user["id"]
 
 
 def _validate(d: dict) -> str | None:
-    """Return an error message, or None when the payload is valid."""
+    # error string, or None if the payload is fine
     if not (d.get("title") or "").strip():
         return "Title is required"
     if not (d.get("description") or "").strip():
@@ -64,11 +58,11 @@ def _validate(d: dict) -> str | None:
     if tickets < 1:
         return "Must offer at least 1 ticket"
 
-    # --- capacity enforcement ---
+    # can't sell more than the venue holds
     if capacity > 0 and tickets > capacity:
         return f"Ticket count ({tickets:,}) exceeds venue capacity ({capacity:,})"
 
-    # --- tier totals must fit inside the ticket pool ---
+    # tiers have to fit inside the ticket pool
     tiers = d.get("tiers") or []
     if tiers:
         tier_total = 0
@@ -94,7 +88,7 @@ def _validate(d: dict) -> str | None:
 
 
 def _budget_from_payload(d: dict) -> dict:
-    """Compute the budget for an incoming event payload."""
+    # budget for an incoming payload
     artist_fees = [float(f) for f in (d.get("artist_fees") or [])]
     result = calculate_budget(
         BudgetInput(
@@ -110,12 +104,8 @@ def _budget_from_payload(d: dict) -> dict:
 
 
 def _save_artists(db, event_id: int, artist_ids: list[int]) -> float:
-    """
-    Replace an event's lineup and return the total fee.
-
-    Fees are snapshotted so later price changes to an artist don't silently
-    rewrite historical budgets.
-    """
+    # replace the lineup, return the total fee.
+    # fees are snapshotted so a later artist price change can't rewrite history.
     db.execute("DELETE FROM event_artists WHERE event_id=?", (event_id,))
 
     total = 0.0
@@ -132,7 +122,7 @@ def _save_artists(db, event_id: int, artist_ids: list[int]) -> float:
 
 
 def _save_tiers(db, event_id: int, tiers: list[dict]) -> None:
-    """Replace an event's ticket tiers."""
+    # replace the tiers
     db.execute("DELETE FROM ticket_tiers WHERE event_id=?", (event_id,))
     for tier in tiers or []:
         name = (tier.get("name") or "").strip()
@@ -144,13 +134,11 @@ def _save_tiers(db, event_id: int, tiers: list[dict]) -> None:
         )
 
 
-# ---------------------------------------------------------------------------
-# Budget preview — no DB writes
-# ---------------------------------------------------------------------------
+# budget preview, no db writes
 
 @bp.post("/quote")
 def quote():
-    """Live budget calculation for the event form."""
+    # live calc for the event form
     d = request.json or {}
     budget = _budget_from_payload(d)
     return jsonify({
@@ -159,9 +147,7 @@ def quote():
     })
 
 
-# ---------------------------------------------------------------------------
-# Listing & detail
-# ---------------------------------------------------------------------------
+# listing + detail
 
 @bp.get("")
 def list_events():
@@ -177,11 +163,11 @@ def list_events():
     user = current_user()
 
     if mine:
-        # An organiser sees their own drafts as well as published events.
+        # organiser sees their own drafts too
         if not user:
             return jsonify({"error": "unauthorized"}), 401
         if user["role"] == "admin" and request.args.get("all") == "1":
-            pass  # admins may list everything
+            pass  # admin, no filter
         else:
             where.append("e.created_by = ?")
             params.append(user["id"])
@@ -242,20 +228,18 @@ def get_event(event_id: int):
     if not row:
         return jsonify({"error": "not found"}), 404
 
-    # Unpublished events are visible only to their owner or an admin.
+    # drafts only visible to owner/admin
     if row["status"] != "published" and not _can_manage(row, current_user()):
         return jsonify({"error": "not found"}), 404
 
     return jsonify(event_to_dict(row, db, detailed=True))
 
 
-# ---------------------------------------------------------------------------
-# Create / update / delete
-# ---------------------------------------------------------------------------
+# create / update / delete
 
 @bp.post("")
 def create_event():
-    """Any logged-in user may create an event (draft until fee is paid)."""
+    # any logged-in user, lands as a draft until the fee is paid
     if not check_csrf():
         return jsonify({"error": "invalid csrf token"}), 403
 
@@ -370,18 +354,12 @@ def delete_event(event_id: int):
     return jsonify({"ok": True})
 
 
-# ---------------------------------------------------------------------------
-# Publish (dummy platform-fee gate)
-# ---------------------------------------------------------------------------
+# publish (dummy fee gate)
 
 @bp.post("/<int:event_id>/publish")
 def publish_event(event_id: int):
-    """
-    Pay the platform fee and push the event live.
-
-    The payment is a stub for now — swap the marked block for a real
-    gateway call and the rest of this flow stays identical.
-    """
+    # pay the fee, go live. payment is a stub -- swap the marked block for a
+    # real gateway and the rest of this flow doesn't change.
     if not check_csrf():
         return jsonify({"error": "invalid csrf token"}), 403
 
@@ -398,14 +376,13 @@ def publish_event(event_id: int):
     d = request.json or {}
     method = d.get("method", "card")
 
-    # --- dummy payment gate: replace with a real gateway integration ---
+    # dummy gate, swap for a real gateway
     if method == "card":
         card = (d.get("card_number") or "").replace(" ", "")
         if len(card) < 13 or not card.isdigit():
             return jsonify({"error": "invalid card number"}), 400
         if card.endswith("0000"):
             return jsonify({"error": "payment declined (demo: cards ending 0000 fail)"}), 402
-    # ------------------------------------------------------------------
 
     import time
     txn = f"PLATFORM-{int(time.time() * 1000)}-{event_id}"
@@ -420,7 +397,7 @@ def publish_event(event_id: int):
 
 @bp.get("/<int:event_id>/lineup")
 def get_lineup(event_id: int):
-    """Artist lineup and tiers for one event."""
+    # lineup + tiers for one event
     db = get_db()
     if not db.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone():
         return jsonify({"error": "not found"}), 404
@@ -430,19 +407,12 @@ def get_lineup(event_id: int):
     })
 
 
-# ---------------------------------------------------------------------------
-# Cover image upload
-# ---------------------------------------------------------------------------
+# cover image upload
 
 @bp.post("/upload-image")
 def upload_image():
-    """
-    Accept an image file and return its public URL.
-
-    Multipart, so this endpoint deliberately skips the JSON CSRF header
-    check — it requires a session instead, and the token travels in the form
-    body as `csrf_token`.
-    """
+    # multipart, so it can't use the JSON CSRF header check. session required
+    # instead, and the token rides in the form body as `csrf_token`.
     user = current_user()
     if not user:
         return jsonify({"error": "sign in to upload an image"}), 401
@@ -455,7 +425,7 @@ def upload_image():
         url = save_image(request.files.get("image"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
-    except Exception as exc:                      # noqa: BLE001 - surface clearly
+    except Exception as exc:                      # noqa: BLE001
         return jsonify({"error": f"Upload failed: {exc}"}), 500
 
     return jsonify({"ok": True, "image_url": url})

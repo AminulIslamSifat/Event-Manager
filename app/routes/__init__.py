@@ -1,9 +1,4 @@
-"""
-Blueprint registry.
-
-`register_blueprints(app)` is the single place that knows which route
-modules exist, keeping app/__init__.py tidy.
-"""
+# blueprint registry. the one place that knows which route modules exist.
 
 from . import admin, artists, auth, bookings, events, venues
 

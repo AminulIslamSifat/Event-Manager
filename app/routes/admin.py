@@ -1,8 +1,6 @@
-"""
-Admin-only endpoints: dashboard stats, CSV export, platform settings.
-"""
+# admin only: stats, csv export, settings
 
-from flask import Blueprint, Response, jsonify, request, session
+from flask import Blueprint, Response, jsonify, request
 
 from ..auth import admin_required, check_csrf
 from ..db import get_db
@@ -26,7 +24,8 @@ def stats():
             WHERE b.status = 'confirmed'"""
     ).fetchone()["r"]
 
-    # Total production spend across every event, using the same formula as pricing.py.
+    # production spend. NOTE: no clamp here, unlike pricing.py -- heavily
+    # sponsored events go negative instead of bottoming out at 0.
     spend = db.execute(
         """SELECT COALESCE(SUM(venue_fee + artists_total + organizer_costs + admin_margin - sponsorship), 0) AS s
              FROM events WHERE status = 'published'"""

@@ -1,7 +1,4 @@
-/* ============================================================
-   Header search — matches the markup in index.html
-   (<div class="search"><svg class="search-icon"><input id="nav-search">)
-   ============================================================ */
+/* header search. matches the .search markup in index.html. */
 
 .search {
   position: relative;
@@ -49,7 +46,7 @@
 
 #nav-search::-webkit-search-cancel-button { -webkit-appearance: none; }
 
-/* Header reflow on narrow screens: brand + nav on row 1, search on row 2 */
+/* narrow screens: brand + nav row 1, search row 2 */
 @media (max-width: 860px) {
   .header-inner { flex-wrap: wrap; gap: 0.7rem; }
   .brand { order: 1; }
@@ -57,12 +54,12 @@
   .search { order: 3; flex-basis: 100%; max-width: 100%; }
 }
 
-/* Badge shown next to the username for admins */
+/* admin badge next to the username */
 .nav-links button.user::after {
   content: "";
 }
 
-/* Dashboard / admin sub-navigation */
+/* dashboard / admin subnav */
 .subnav {
   display: flex;
   gap: 0.4rem;
@@ -87,7 +84,7 @@
 .subnav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
 .subnav button.active { color: var(--gold); background: var(--gold-wash); }
 
-/* Compact stat strip used on the dashboard */
+/* compact stat strip */
 .mini-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -116,7 +113,7 @@
   color: var(--text-dim);
   margin-top: 0.25rem;
 }
-/* ---------- Account chip: avatar + name in the top-right ---------- */
+/* account chip, top right */
 .account-chip {
   display: inline-flex;
   align-items: center;
@@ -158,7 +155,7 @@
   font-size: 0.82rem;
 }
 
-/* Larger avatar used on the profile page */
+/* bigger avatar, profile page */
 .avatar-lg {
   width: 72px;
   height: 72px;
@@ -184,7 +181,7 @@
 .profile-head .who h1 { font-size: 1.6rem; margin-bottom: 0.15rem; }
 .profile-head .who .handle { color: var(--text-dim); font-size: 0.85rem; }
 
-/* Detail rows on the profile card */
+/* detail rows, profile card */
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

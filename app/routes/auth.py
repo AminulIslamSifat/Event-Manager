@@ -1,6 +1,4 @@
-"""
-Authentication routes: CSRF bootstrap, register, login, logout, profile.
-"""
+# auth routes: csrf, register, login, logout, profile
 
 import re
 import secrets
@@ -13,11 +11,8 @@ from ..db import get_db
 
 bp = Blueprint("auth", __name__, url_prefix="/api")
 
-# Deliberately permissive: something@something.something
+# deliberately loose: something@something.something
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-# Fields a user may set on their own profile.
-PROFILE_FIELDS = ("full_name", "email", "phone", "city", "bio")
 
 
 @bp.get("/csrf")
@@ -27,12 +22,10 @@ def csrf_token():
     return jsonify({"token": session["csrf"]})
 
 
-# ---------------------------------------------------------------------------
-# Registration
-# ---------------------------------------------------------------------------
+# registration
 
 def validate_signup(d: dict) -> str | None:
-    """Return the first validation error, or None when the payload is good."""
+    # first error, or None if it's good
     username = (d.get("username") or "").strip()
     full_name = (d.get("full_name") or "").strip()
     email = (d.get("email") or "").strip()
@@ -50,8 +43,7 @@ def validate_signup(d: dict) -> str | None:
     if len(password) < 6:
         return "Password must be at least 6 characters"
 
-    # confirm_password is optional on the API (so old clients keep working)
-    # but always enforced when supplied.
+    # confirm_password is optional so old clients keep working, but enforced if sent
     if confirm is not None and password != confirm:
         return "Passwords do not match"
 
@@ -98,9 +90,7 @@ def register():
     return jsonify({"ok": True})
 
 
-# ---------------------------------------------------------------------------
-# Session
-# ---------------------------------------------------------------------------
+# session
 
 @bp.post("/login")
 def login():
@@ -148,7 +138,7 @@ def me():
 
 
 def _public_user(row) -> dict:
-    """Shape a user row for the client (never includes the password hash)."""
+    # user row for the client. never includes the hash.
     keys = row.keys()
 
     def get(name):
@@ -167,9 +157,7 @@ def _public_user(row) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Profile
-# ---------------------------------------------------------------------------
+# profile
 
 @bp.put("/profile")
 @login_required

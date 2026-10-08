@@ -1,19 +1,14 @@
-/**
- * Event list and event detail views.
- */
+// event list + detail
 
 import { appRoot, get, post, store } from "../api.js";
 import { navigate } from "../router.js";
-import { clearSearch } from "../nav.js";
+import { clearSearch, setSearchBusy } from "../nav.js";
 import { toast } from "../ui.js";
 import {
   categoryIcon, emptyState, esc, formatDate, formatMoney,
-  priceLabel, skeletonGrid, val,
+  priceLabel, setBusy, skeletonGrid, val,
 } from "../utils.js";
 
-// ---------------------------------------------------------------------------
-// Card + list
-// ---------------------------------------------------------------------------
 
 function eventCard(event) {
   const { text, free } = priceLabel(event.price);
@@ -40,7 +35,7 @@ function eventCard(event) {
 }
 
 export async function renderEvents() {
-  // Keep the header search box in sync with the stored query.
+  // keep the header box in sync with the stored query
   const headerSearch = document.getElementById("nav-search");
   if (headerSearch && headerSearch.value !== store.query) headerSearch.value = store.query;
 
@@ -84,6 +79,7 @@ export async function loadEvents() {
   const grid = document.getElementById("events-grid");
   if (!grid) return;
   grid.innerHTML = skeletonGrid(6);
+  setSearchBusy(true);
 
   try {
     const params = new URLSearchParams({
@@ -112,6 +108,8 @@ export async function loadEvents() {
     renderPagination(data.pages);
   } catch {
     grid.innerHTML = emptyState({ icon: "⚠️", message: "Couldn't load events. Try again." });
+  } finally {
+    setSearchBusy(false);
   }
 }
 
@@ -164,9 +162,6 @@ export function clearFilters() {
   renderEvents();
 }
 
-// ---------------------------------------------------------------------------
-// Detail
-// ---------------------------------------------------------------------------
 
 export async function renderDetail(id) {
   appRoot.innerHTML = `<div class="skeleton" style="height:420px"></div>`;
@@ -184,7 +179,7 @@ export async function renderDetail(id) {
     ? `<img src="${esc(event.image_url)}" alt="" onerror="this.remove()">`
     : categoryIcon(event.category);
 
-  // Lineup chips, when the organiser booked any artists.
+  // lineup chips, only if artists were booked
   const lineup = event.artists?.length
     ? `<div style="margin:1.25rem 0">
          <div class="field-label">Lineup</div>
@@ -194,7 +189,7 @@ export async function renderDetail(id) {
        </div>`
     : "";
 
-  // Ticket tiers, when defined — otherwise a plain quantity box.
+  // tiers if defined, else a plain qty box
   const tiers = event.tiers || [];
   const bookingForm = store.user?.logged_in
     ? `<div class="booking-bar">
@@ -216,7 +211,7 @@ export async function renderDetail(id) {
          <a id="to-login">Sign in</a> to book tickets
        </p>`;
 
-  // Budget summary is only shown to the organiser or an admin.
+  // budget only for owner/admin
   const canManage = store.user?.role === "admin" || store.user?.id === event.created_by;
   const budgetBlock = canManage && event.budget
     ? `<div class="card" style="margin-top:1.5rem">
@@ -272,6 +267,9 @@ export async function bookTicket(eventId) {
   const tierEl = document.getElementById("tier");
   const tierId = tierEl ? Number(tierEl.value) : null;
 
+  const btn = document.getElementById("book-btn");
+  setBusy(btn, true, "Booking…");
+
   try {
     const booking = await post("/api/book", {
       event_id: eventId,
@@ -279,7 +277,7 @@ export async function bookTicket(eventId) {
       tier_id: tierId,
     });
 
-    // The API doesn't echo event_id, so remember it for the checkout back button.
+    // api doesn't echo event_id, stash it for the checkout back button
     store.lastBooking = { ...booking, event_id: eventId };
 
     if (booking.free) {
@@ -289,6 +287,7 @@ export async function bookTicket(eventId) {
       navigate("payment");
     }
   } catch (e) {
+    setBusy(btn, false);
     const errEl = document.getElementById("err");
     if (errEl) errEl.textContent = e.message;
   }

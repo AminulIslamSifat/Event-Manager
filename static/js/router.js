@@ -1,20 +1,15 @@
-/**
- * Hash-based router.
- *
- * Views register themselves; `navigate()` updates the URL, then dispatches
- * to the matching render function.
- */
+// hash router. views register themselves, navigate() updates the url then renders.
 
 import { store } from "./api.js";
 
 const routes = new Map();
 
-/** Register a view: name -> render function (receives the route param). */
+// name -> render fn, gets the route param
 export function route(name, renderFn) {
   routes.set(name, renderFn);
 }
 
-/** Programmatic navigation. */
+// go somewhere
 export function navigate(view, param) {
   store.view = view;
   store.param = param;
@@ -22,14 +17,14 @@ export function navigate(view, param) {
   render();
 }
 
-/** Re-render the current view (used after in-place data changes). */
+// repaint current view after data changed
 export function render() {
   window.scrollTo({ top: 0 });
   const view = routes.get(store.view) || routes.get("events");
   view?.(store.param);
 }
 
-/** Parse `#view/param` into the store. */
+// #view/param -> store
 export function readHash() {
   const parts = (location.hash.slice(1) || "events").split("/");
   store.view = parts[0] || "events";
@@ -37,7 +32,7 @@ export function readHash() {
   store.param = raw === undefined ? null : (isNaN(raw) ? raw : parseInt(raw, 10));
 }
 
-/** Wire up browser back/forward. */
+// back/forward buttons
 export function initRouter() {
   window.addEventListener("popstate", (e) => {
     if (e.state) {

@@ -1,27 +1,15 @@
-"""
-Pricing engine — pure functions, no Flask or database imports.
-
-Keeping the money math isolated means it can be unit-tested directly and
-reused by the API, the CLI, or a future export tool.
-
-Formula (per spec):
-
-    Total Expenses = Venue Fee
-                   + Σ(Selected Artist Fees)
-                   + Organizer Costs
-                   + Admin Margin
-
-    Net Expense    = Total Expenses − Sponsorship
-
-    Base Ticket    = Net Expense ÷ Venue Capacity
-"""
+# pricing math. no flask/db imports so it stays testable on its own.
+#
+#   total expenses = venue + artists + organizer + margin
+#   net            = total - sponsorship
+#   base ticket    = net / capacity
 
 from dataclasses import dataclass, field
 
 
 @dataclass
 class BudgetInput:
-    """Everything needed to price one event."""
+    # inputs for one event
 
     venue_fee: float = 0.0
     artist_fees: list[float] = field(default_factory=list)
@@ -33,7 +21,7 @@ class BudgetInput:
 
 @dataclass
 class BudgetResult:
-    """Computed budget breakdown, ready to serialise straight to JSON."""
+    # result, drops straight into jsonify
 
     venue_fee: float
     artists_total: float
@@ -51,19 +39,14 @@ class BudgetResult:
         return self.__dict__.copy()
 
 
-# Round every monetary result to 2dp so floating-point noise never reaches the UI.
+# 2dp, so float noise never reaches the ui
 def _money(value: float) -> float:
     return round(float(value or 0), 2)
 
 
 def calculate_budget(data: BudgetInput, *, safety_buffer: float = 0.0) -> BudgetResult:
-    """
-    Compute the full budget for an event.
-
-    `safety_buffer` is an optional extra fraction (e.g. 0.05 for 5%
-    contingencies) added on top of total expenses before sponsorship is
-    deducted.
-    """
+    # safety_buffer = extra fraction on top of expenses (0.05 = 5% contingency),
+    # applied before sponsorship comes off
     venue_fee = _money(data.venue_fee)
     artists_total = _money(sum(data.artist_fees or []))
     organizer_costs = _money(data.organizer_costs)
@@ -75,12 +58,12 @@ def calculate_budget(data: BudgetInput, *, safety_buffer: float = 0.0) -> Budget
     buffer_amount = subtotal * max(0.0, safety_buffer)
     total_expenses = _money(subtotal + buffer_amount)
 
-    # Sponsorship can never push the net below zero.
+    # sponsorship can't push net negative
     net_expense = _money(max(0.0, total_expenses - sponsorship))
 
     base_ticket_price = _money(net_expense / capacity) if capacity > 0 else 0.0
 
-    # Break-even counts tickets needed at the rounded price.
+    # tickets needed at the rounded price
     if base_ticket_price > 0:
         break_even = int(-(-net_expense // base_ticket_price))  # ceil division
     else:
@@ -102,12 +85,7 @@ def calculate_budget(data: BudgetInput, *, safety_buffer: float = 0.0) -> Budget
 
 
 def suggested_tier_prices(base_price: float) -> dict[str, float]:
-    """
-    Sensible starting points for tiered pricing.
-
-    VIP pays a premium, Student gets a discount — organisers can override
-    every number in the UI.
-    """
+    # starting points only. vip pays more, student pays less. organiser overrides all of it.
     base = _money(base_price)
     return {
         "base": base,

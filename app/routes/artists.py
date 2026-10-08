@@ -1,8 +1,4 @@
-"""
-Artist / band reference data.
-
-Same rules as venues: public reads, admin-only writes.
-"""
+# artist reference data. public reads, admin writes.
 
 from flask import Blueprint, jsonify, request
 
@@ -13,7 +9,7 @@ bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 
 
 def _payload(d: dict) -> tuple:
-    """Normalise an incoming artist payload into a DB-ready tuple."""
+    # payload -> db tuple
     return (
         (d.get("name") or "").strip(),
         d.get("genre", ""),

@@ -1,9 +1,6 @@
-/* ============================================================
-   EVENT KHUJO — Design System
-   Aesthetic minimal · warm dark · gold accent
-   ============================================================ */
+/* event khujo — dark, warm, gold accent */
 
-/* ---------- 1. Tokens ---------- */
+/* tokens */
 :root {
   /* surfaces */
   --bg:            #0a0a0b;
@@ -43,7 +40,7 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ---------- 2. Reset ---------- */
+/* reset */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
@@ -65,16 +62,16 @@ body {
 
 ::selection { background: var(--gold-wash-2); color: var(--gold-bright); }
 
-/* Scrollbar */
+/* scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #26262a; border-radius: var(--r-pill); border: 3px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: #33333a; }
 
-/* ---------- 3. Typography ---------- */
+/* type */
 h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 
-/* Display serif — used for hero + view titles */
+/* display serif, hero + view titles */
 .display {
   font-family: 'Instrument Serif', Georgia, serif;
   font-weight: 400;
@@ -82,7 +79,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
   line-height: 1.1;
 }
 
-/* View header block */
+/* view header */
 .view-head { margin-bottom: 2rem; }
 .view-head .eyebrow {
   font-size: 0.7rem;
@@ -94,7 +91,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 .view-head h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
 .view-head p.sub { color: var(--text-soft); margin-top: 0.5rem; max-width: 52ch; }
 
-/* ---------- 4. Layout ---------- */
+/* layout */
 .app {
   max-width: 1120px;
   margin: 0 auto;
@@ -103,7 +100,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 
 .app-narrow { max-width: 520px; }
 
-/* ---------- 5. Header ---------- */
+/* header */
 .site-header {
   position: sticky;
   top: 0;
@@ -141,7 +138,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 }
 .brand:hover { opacity: 0.75; }
 
-/* Search — grows to fill the middle */
+/* search, grows to fill the middle */
 .search {
   position: relative;
   flex: 1;
@@ -181,7 +178,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
 .search:focus-within .search-icon { color: var(--gold); }
 .search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 
-/* Nav links */
+/* nav links */
 .nav-links {
   display: flex;
   align-items: center;
@@ -205,7 +202,7 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
   color: var(--text);
   background: rgba(255, 255, 255, 0.045);
 }
-/* Primary CTA in nav */
+/* nav CTA */
 .nav-links button.accent {
   color: var(--gold);
   border-color: var(--gold-line);
@@ -215,13 +212,13 @@ h1, h2, h3, h4 { font-weight: 500; line-height: 1.25; letter-spacing: -0.02em; }
   border-color: var(--gold);
   color: var(--gold-bright);
 }
-/* Logged-in username chip */
+/* username chip */
 .nav-links button.user {
   color: var(--text);
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ---------- 6. Buttons ---------- */
+/* buttons */
 button { font-family: inherit; }
 
 .btn, button.primary, button.ghost, button.danger {
@@ -285,7 +282,7 @@ button.danger:hover {
 }
 .back-btn:hover { color: var(--gold); }
 
-/* ---------- 7. Cards ---------- */
+/* cards */
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -294,7 +291,7 @@ button.danger:hover {
   transition: border-color 0.25s var(--ease), background 0.25s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
 }
 
-/* ---------- 8. Event grid ---------- */
+/* event grid */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -350,7 +347,7 @@ button.danger:hover {
 .price.free { color: var(--success); }
 .tickets-left { font-size: 0.75rem; color: var(--text-dim); }
 
-/* ---------- 9. Tags & meta ---------- */
+/* tags + meta */
 .meta { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .tag {
@@ -369,7 +366,7 @@ button.danger:hover {
 .tag.gold { color: var(--gold); background: var(--gold-wash); border-color: var(--gold-line); }
 .tag.success { color: var(--success); background: rgba(106, 171, 123, 0.1); border-color: rgba(106, 171, 123, 0.28); }
 
-/* ---------- 10. Toolbar / filters ---------- */
+/* toolbar / filters */
 .toolbar {
   display: flex;
   gap: 0.6rem;
@@ -378,7 +375,7 @@ button.danger:hover {
 }
 .toolbar select { width: auto; margin: 0; }
 
-/* ---------- 11. Forms ---------- */
+/* forms */
 input, select, textarea {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -424,13 +421,13 @@ select { cursor: pointer; appearance: none;
 
 .error { color: var(--danger); font-size: 0.82rem; min-height: 1.1rem; margin-bottom: 0.5rem; }
 
-/* ---------- 12. Auth pages ---------- */
+/* auth pages */
 .auth-wrap { max-width: 420px; margin: 3rem auto 0; }
 .auth-wrap h1 { font-size: 2rem; margin-bottom: 0.35rem; }
 .auth-wrap .sub { color: var(--text-soft); font-size: 0.9rem; margin-bottom: 1.75rem; }
 .auth-wrap .card { padding: 2rem; }
 
-/* ---------- 13. Empty & skeleton ---------- */
+/* empty state + skeleton */
 .empty-state { text-align: center; padding: 4rem 1.5rem; color: var(--text-dim); }
 .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.6; }
 .empty-state p { margin-bottom: 1.25rem; font-size: 0.92rem; }
@@ -443,9 +440,74 @@ select { cursor: pointer; appearance: none;
 }
 .skeleton-card { height: 280px; }
 .skeleton-line { height: 1rem; border-radius: var(--r-sm); margin-bottom: 0.6rem; }
+.skeleton-row { height: 96px; border-radius: var(--r); margin-bottom: 0.75rem; }
 @keyframes shimmer { from { background-position: 220% 0; } to { background-position: -20% 0; } }
 
-/* ---------- 14. Toast ---------- */
+/* ---------- 14. Loaders & busy states ---------- */
+
+/* inline spinner. colour inherits from the text it sits next to. */
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--gold);
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* busy button: spinner + label, locked while the request is in flight */
+button.is-busy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: progress;
+  opacity: 0.85;
+}
+button.is-busy .spinner { border-top-color: currentColor; }
+
+/* centered loader for panels and sections */
+.block-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 3rem 1rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* header search: spinner replaces the magnifier while a query runs */
+.search-spinner {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  margin-top: -8px;
+  display: none;
+  pointer-events: none;
+}
+.search.is-busy .search-spinner { display: inline-block; }
+.search.is-busy .search-icon { opacity: 0; }
+
+/* budget panel: dim + corner spinner while the server recalculates */
+.budget-panel { position: relative; transition: opacity 0.2s var(--ease); }
+.budget-panel.is-busy { opacity: 0.55; }
+.budget-panel.is-busy::after {
+  content: "";
+  position: absolute;
+  top: 1.05rem;
+  right: 1.1rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--gold);
+  animation: spin 0.7s linear infinite;
+}
+
+/* toast */
 #toast-container {
   position: fixed;
   bottom: 1.5rem;
@@ -472,7 +534,7 @@ select { cursor: pointer; appearance: none;
 @keyframes toastIn  { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(16px); } }
 
-/* ---------- 15. Modal ---------- */
+/* modal */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -501,7 +563,7 @@ select { cursor: pointer; appearance: none;
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
 
-/* ---------- 16. Detail page ---------- */
+/* detail page */
 .detail-hero {
   height: 260px;
   border-radius: var(--r-lg);
@@ -530,7 +592,7 @@ select { cursor: pointer; appearance: none;
 .booking-bar input { width: 84px; margin: 0; text-align: center; }
 .booking-bar .btn-grow { flex: 1; min-width: 160px; }
 
-/* ---------- 17. Summary rows (checkout / confirm) ---------- */
+/* summary rows, checkout + confirm */
 .summary {
   background: var(--input);
   border: 1px solid var(--line);
@@ -554,7 +616,7 @@ select { cursor: pointer; appearance: none;
 }
 .summary-row.total .v { color: var(--gold); font-size: 1.05rem; }
 
-/* ---------- 18. Pay methods ---------- */
+/* pay methods */
 .pay-methods { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
 .pay-methods button {
   flex: 1;
@@ -574,7 +636,7 @@ select { cursor: pointer; appearance: none;
   background: var(--gold-wash);
 }
 
-/* ---------- 19. Stats (admin) ---------- */
+/* admin stats */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -609,7 +671,7 @@ select { cursor: pointer; appearance: none;
 .list-row .info { flex: 1; min-width: 200px; }
 .list-row .actions { display: flex; gap: 0.5rem; }
 
-/* ---------- 20. Pagination ---------- */
+/* pagination */
 .pagination {
   display: flex;
   justify-content: center;
@@ -638,7 +700,7 @@ select { cursor: pointer; appearance: none;
 }
 .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* ---------- 21. Confirmation ---------- */
+/* confirmation */
 .confirm-box { text-align: center; padding: 2.5rem 2rem; }
 .confirm-check {
   width: 56px; height: 56px;
@@ -653,7 +715,7 @@ select { cursor: pointer; appearance: none;
 }
 .confirm-box h2 { font-size: 1.5rem; margin-bottom: 0.4rem; }
 
-/* ---------- 22. Utility ---------- */
+/* utility */
 .center { text-align: center; }
 .mt-2 { margin-top: 1.5rem; }
 .mb-2 { margin-bottom: 1.5rem; }
@@ -661,7 +723,7 @@ select { cursor: pointer; appearance: none;
 .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .hidden { display: none !important; }
 
-/* ---------- 23. Responsive ---------- */
+/* responsive */
 @media (max-width: 860px) {
   .header-inner { flex-wrap: wrap; gap: 0.7rem; }
   .brand { order: 1; }
@@ -687,9 +749,4 @@ select { cursor: pointer; appearance: none;
   .list-row .actions { width: 100%; }
   .list-row .actions button { flex: 1; }
 }
-<!-- update 7200 -->
-<!-- update 43200 -->
-<!-- update 86400 -->
-/* grid layout: repeat(auto-fill, minmax(280px, 1fr)) */
-/* @media (max-width: 768px) responsive adjustments */
-/* :root { --primary, --surface, --radius, --spacing } */
+

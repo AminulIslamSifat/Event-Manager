@@ -1,10 +1,5 @@
-"""
-Event image uploads.
-
-Validated by extension and magic bytes, then stored under static/uploads/
-with a random name. No image library needed — files are served as static
-assets and never executed, and MAX_CONTENT_LENGTH caps their size.
-"""
+# image uploads. ext + magic bytes, random filename, served as static.
+# MAX_CONTENT_LENGTH is what caps the size.
 
 import secrets
 from pathlib import Path
@@ -13,8 +8,7 @@ from flask import current_app
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
-# Leading bytes that identify each format. Guards against a renamed
-# executable, which an extension check alone would let through.
+# magic bytes. catches a renamed exe that an extension check alone would wave through.
 MAGIC_NUMBERS = (
     (b"\x89PNG\r\n\x1a\n", "png"),
     (b"\xff\xd8\xff", "jpeg"),
@@ -27,7 +21,7 @@ WEBP_MARKER = b"WEBP"
 
 
 def upload_dir() -> Path:
-    """static/uploads/, created on first use."""
+    # static/uploads, made on first use
     target = Path(current_app.static_folder) / "uploads"
     target.mkdir(parents=True, exist_ok=True)
     return target
@@ -38,19 +32,15 @@ def _extension(filename: str) -> str:
 
 
 def _looks_like_image(header: bytes) -> bool:
-    """True when the leading bytes match a known image format."""
+    # do the first bytes look like a real image
     if any(header.startswith(sig) for sig, _ in MAGIC_NUMBERS):
         return True
     return header.startswith(WEBP_PREFIX) and WEBP_MARKER in header[:16]
 
 
 def save_image(file_storage) -> str:
-    """
-    Persist an uploaded image and return its public URL.
-
-    Raises ValueError with a user-facing message when the file is missing,
-    the wrong type, or does not look like a real image.
-    """
+    # save it, return the public url.
+    # ValueError message is safe to show the user as-is.
     if file_storage is None or not file_storage.filename:
         raise ValueError("No file was uploaded")
 

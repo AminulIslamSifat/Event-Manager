@@ -1,14 +1,7 @@
-/**
- * Toast notifications and the confirm modal.
- *
- * Both are imperative helpers — call them, get a result, no state to manage.
- */
+// toasts + confirm modal. call em, get a result, nothing to manage.
 
 import { esc } from "./utils.js";
 
-// ---------------------------------------------------------------------------
-// Toast
-// ---------------------------------------------------------------------------
 
 export function toast(message, type = "success") {
   const container = document.getElementById("toast-container");
@@ -23,14 +16,7 @@ export function toast(message, type = "success") {
   }, 3000);
 }
 
-// ---------------------------------------------------------------------------
-// Confirm modal
-// ---------------------------------------------------------------------------
-
-/**
- * Show a yes/no modal.
- * @returns {Promise<boolean>} true when confirmed.
- */
+// yes/no modal, resolves true if confirmed
 export function confirmModal(title, message) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");

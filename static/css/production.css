@@ -1,10 +1,7 @@
-/* ============================================================
-   Production module styles
-   Budget panel, artist picker, tiers, toggles, status pills.
-   Loaded after style.css so it can lean on the same tokens.
-   ============================================================ */
+/* production module: budget panel, artist picker, tiers, toggles, pills.
+   loaded after style.css so it shares the same tokens. */
 
-/* ---------- Form layout: fields left, budget stuck right ---------- */
+/* form layout, fields left + sticky budget right */
 .form-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
@@ -12,7 +9,7 @@
   align-items: start;
 }
 
-/* ---------- Form sections ---------- */
+/* form sections */
 .form-section {
   border: 1px solid var(--line);
   border-radius: var(--r);
@@ -44,7 +41,7 @@
   flex-shrink: 0;
 }
 
-/* ---------- Budget panel ---------- */
+/* budget panel */
 .budget-panel {
   background: var(--input);
   border: 1px solid var(--line);
@@ -113,7 +110,7 @@
 
 .budget-result .hint { font-size: 0.72rem; color: var(--text-dim); }
 
-/* ---------- Artist picker ---------- */
+/* artist picker */
 .artist-picker {
   max-height: 280px;
   overflow-y: auto;
@@ -164,7 +161,7 @@
 
 .picker-toolbar input { margin: 0; font-size: 0.82rem; }
 
-/* ---------- Toggle switches ---------- */
+/* toggles */
 .toggle-row {
   display: flex;
   align-items: center;
@@ -201,7 +198,7 @@
 .switch input:checked + .track { background: var(--gold-wash-2); }
 .switch input:checked + .track::before { transform: translateX(18px); background: var(--gold); }
 
-/* ---------- Tier editor ---------- */
+/* tier editor */
 .tier-row {
   display: grid;
   grid-template-columns: 1fr 110px 110px 38px;
@@ -223,7 +220,7 @@
 }
 .tier-remove:hover { border-color: var(--danger); color: var(--danger); }
 
-/* ---------- Status pills ---------- */
+/* status pills */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -238,7 +235,7 @@
 .pill.published { color: var(--success); background: rgba(106, 171, 123, 0.12); border: 1px solid rgba(106, 171, 123, 0.3); }
 .pill.draft     { color: var(--gold);    background: var(--gold-wash);             border: 1px solid var(--gold-line); }
 
-/* ---------- Lineup chips (detail page) ---------- */
+/* lineup chips, detail page */
 .lineup { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .lineup .artist-chip {
   display: inline-flex;
@@ -252,7 +249,7 @@
   color: var(--gold-bright);
 }
 
-/* ---------- Reference-data admin table ---------- */
+/* admin reference table */
 .ref-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .ref-table th {
   text-align: left;
@@ -273,7 +270,7 @@
 .ref-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
 .ref-table .num { font-variant-numeric: tabular-nums; text-align: right; }
 
-/* ---------- Responsive ---------- */
+/* responsive */
 @media (max-width: 960px) {
   .form-layout { grid-template-columns: 1fr; }
   .budget-panel { position: static; order: -1; }
@@ -285,7 +282,7 @@
   .ref-table { font-size: 0.78rem; }
   .ref-table th, .ref-table td { padding: 0.5rem 0.3rem; }
 }
-/* ---------- Cover image upload ---------- */
+/* cover image upload */
 .upload-row {
   display: flex;
   align-items: center;

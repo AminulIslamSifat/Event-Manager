@@ -1,27 +1,23 @@
-/**
- * Live budget panel for the event form.
- *
- * Mirrors the server's pricing.py. The authoritative calculation still
- * happens server-side on save — this is purely so the organiser sees the
- * numbers move as they type.
- */
+// live budget panel for the event form.
+// just calls /api/events/quote -- the real calc happens server-side on save,
+// this only exists so the organiser sees numbers move while typing.
 
 import { post } from "../api.js";
 import { esc, formatMoney, formatMoneyExact, val } from "../utils.js";
 
-/** Fees of every currently-ticked artist. */
+// fees of every ticked artist
 function selectedArtistFees() {
   return [...document.querySelectorAll(".artist-check:checked")]
     .map((el) => Number(el.dataset.fee) || 0);
 }
 
-/** Ids of every currently-ticked artist. */
+// ids of every ticked artist
 export function selectedArtistIds() {
   return [...document.querySelectorAll(".artist-check:checked")]
     .map((el) => Number(el.value));
 }
 
-/** Gather every field the pricing engine cares about. */
+// every field the pricing engine cares about
 export function collectBudgetInput() {
   return {
     venue_fee: Number(val("f-venue-fee")) || 0,
@@ -33,7 +29,7 @@ export function collectBudgetInput() {
   };
 }
 
-/** The breakdown markup shown inside the sticky panel. */
+// breakdown markup for the sticky panel
 function breakdownHtml(b) {
   const row = (label, amount, cls = "") =>
     `<div class="budget-row ${cls}">
@@ -76,12 +72,12 @@ function breakdownHtml(b) {
     </div>`;
 }
 
-/**
- * Recalculate via the server and repaint the panel.
- * Failures are shown inline rather than thrown, so typing never breaks.
- */
+// recalc via the server, repaint.
+// errors show inline instead of throwing so typing never breaks.
 export async function refreshBudget(panelEl) {
   if (!panelEl) return null;
+
+  panelEl.classList.add("is-busy");
 
   try {
     const data = await post("/api/events/quote", collectBudgetInput());
@@ -91,10 +87,12 @@ export async function refreshBudget(panelEl) {
     panelEl.innerHTML = `<h3>Budget breakdown</h3>
       <p class="muted" style="font-size:0.8rem">${esc(err.message)}</p>`;
     return null;
+  } finally {
+    panelEl.classList.remove("is-busy");
   }
 }
 
-/** Attach listeners so any relevant field edit recalculates the panel. */
+// any relevant field edit recalcs
 export function wireBudgetInputs(panelEl, { onRecalculate } = {}) {
   const ids = ["f-organizer", "f-margin", "f-sponsor", "f-capacity"];
   const recalc = async () => {

@@ -1,15 +1,10 @@
-/**
- * Header navigation, account chip, and the global search box.
- */
+// header nav, account chip, global search
 
 import { api, navRoot, store } from "./api.js";
 import { navigate } from "./router.js";
 import { toast } from "./ui.js";
 
-/**
- * Initials for the avatar: "Aminul Islam" -> "AI", "sifat" -> "SI".
- * Falls back to the username when no real name is set.
- */
+// "Aminul Islam" -> "AI", "sifat" -> "SI". falls back to username.
 export function initialsFor(user) {
   if (!user) return "?";
   const source = (user.full_name || "").trim() || user.username || "?";
@@ -21,7 +16,7 @@ export function initialsFor(user) {
   return source.slice(0, 2).toUpperCase();
 }
 
-/** Rebuild the nav buttons for the current auth state. */
+// rebuild nav for the current auth state
 export function updateNav() {
   navRoot.innerHTML = "";
   const loggedIn = Boolean(store.user?.logged_in);
@@ -35,13 +30,13 @@ export function updateNav() {
     return button;
   };
 
-  // Find Event — jump to the list and focus the search field
+  // jump to list + focus search
   add("Find Event", () => {
     if (store.view !== "events") navigate("events");
     document.getElementById("nav-search").focus();
   });
 
-  // Create Event — open to everyone; drafts publish after the platform fee
+  // open to everyone, draft until the fee is paid
   add("Create Event", () => {
     if (!loggedIn) {
       toast("Sign in to create an event", "error");
@@ -50,13 +45,13 @@ export function updateNav() {
     navigate("createEvent");
   }, "accent");
 
-  // My Tickets — always shown; the view itself redirects when logged out
+  // always shown, the view redirects if logged out
   add("My Tickets", () => navigate("bookings"));
 
   if (loggedIn) {
     if (store.user.role === "admin") add("Admin", () => navigate("admin"));
 
-    // Account chip: avatar + name, top-right, opens the profile page
+    // avatar + name, top right
     const chip = document.createElement("button");
     chip.className = "account-chip";
     chip.title = "View profile";
@@ -71,16 +66,12 @@ export function updateNav() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Global search
-// ---------------------------------------------------------------------------
+// global search
 
 let searchTimer;
 
-/**
- * The search box lives in the header, so it must work from any view.
- * Typing anywhere routes you to the events list with the query applied.
- */
+// the box lives in the header so it has to work from any view.
+// typing anywhere drops you on the events list with the query applied.
 export function setupHeaderSearch({ onApply }) {
   const input = document.getElementById("nav-search");
 
@@ -108,9 +99,16 @@ export function setupHeaderSearch({ onApply }) {
   });
 }
 
-/** Clear the search box and the stored query. */
+// clear the box + the stored query
 export function clearSearch() {
   store.query = "";
   const input = document.getElementById("nav-search");
   if (input) input.value = "";
+}
+
+// spin the header search while a query is in flight.
+// the events view owns the request, so it drives this.
+export function setSearchBusy(busy) {
+  const box = document.querySelector(".search");
+  if (box) box.classList.toggle("is-busy", Boolean(busy));
 }

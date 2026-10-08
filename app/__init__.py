@@ -1,9 +1,4 @@
-"""
-Event Khujo — application factory.
-
-Keeps the Flask app construction in one place so routes, extensions and
-configuration can be wired up without import cycles.
-"""
+# app factory. one place to build the app, dodges import cycles.
 
 import os
 
@@ -18,7 +13,6 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def create_app(config: dict | None = None) -> Flask:
-    """Build and configure the Flask application."""
     app = Flask(
         __name__,
         static_folder=os.path.join(PROJECT_ROOT, "static"),
@@ -36,37 +30,35 @@ def create_app(config: dict | None = None) -> Flask:
     if config:
         app.config.update(config)
 
-    # --- teardown: return the request-scoped connection to the pool ---
-    # Registered before init_db() so the bootstrap context also cleans up.
+    # registered before init_db so the bootstrap ctx cleans up too
     app.teardown_appcontext(db.close_db)
 
-    # --- database lifecycle ---
+    # db lifecycle
     with app.app_context():
         db.init_db()
 
-        # Cloud comes first: when Atlas already holds data it is the source of
-        # truth, so its contents replace the local cache before anything reads.
+        # cloud first. if atlas has data it wins, so replace local before anything reads.
         sync.configure(app)
         if sync.enabled():
             sync.pull_all(db.get_db())
 
         db.seed_reference_data()
 
-        # First run against an empty cloud: publish what we have locally.
+        # empty cloud on first run -> push what we have
         if sync.enabled():
             sync.push_tables(db.get_db(), sync.SYNCED_TABLES)
 
-    # --- default thumbnails, regenerated when their definitions change ---
+    # default thumbs, only rewritten when the definition changes
     from . import thumbs
     written = thumbs.write_thumbnails(app.static_folder)
     if written:
         print(f"[thumbs] Wrote {written} default thumbnail(s).")
 
-    # --- blueprints ---
+    # blueprints
     from .routes import register_blueprints
     register_blueprints(app)
 
-    # --- static entry point ---
+    # index.html
     @app.route("/")
     def index():
         return send_from_directory(PROJECT_ROOT, "index.html")

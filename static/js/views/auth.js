@@ -1,19 +1,12 @@
-/**
- * Login and registration views.
- *
- * Registration collects the profile fields up-front so the profile page has
- * something meaningful to show from day one.
- */
+// login + register.
+// signup collects the profile fields up front so the profile page isn't empty.
 
 import { appRoot, post, store } from "../api.js";
 import { navigate } from "../router.js";
 import { toast } from "../ui.js";
-import { esc, onEnter, val } from "../utils.js";
+import { onEnter, setBusy, val } from "../utils.js";
 import { updateNav } from "../nav.js";
 
-// ---------------------------------------------------------------------------
-// Login
-// ---------------------------------------------------------------------------
 
 export function renderLogin() {
   appRoot.innerHTML = `
@@ -47,6 +40,9 @@ async function doLogin() {
     return;
   }
 
+  const btn = document.getElementById("login-btn");
+  setBusy(btn, true, "Signing in…");
+
   try {
     const user = await post("/api/login", { username, password });
     store.user = { ...user, logged_in: true };
@@ -54,13 +50,11 @@ async function doLogin() {
     toast(`Welcome back, ${user.full_name || user.username}`);
     navigate("events");
   } catch (e) {
+    setBusy(btn, false);
     errEl.textContent = e.message;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Register
-// ---------------------------------------------------------------------------
 
 export function renderRegister() {
   appRoot.innerHTML = `
@@ -106,7 +100,7 @@ export function renderRegister() {
   document.getElementById("reg-btn").onclick = doRegister;
   document.getElementById("to-login").onclick = () => navigate("login");
 
-  // Live "passwords match" feedback
+  // live password match hint
   const pw = document.getElementById("p");
   const pw2 = document.getElementById("p2");
   const hint = document.getElementById("match-hint");
@@ -143,7 +137,7 @@ async function doRegister() {
     confirm_password: val("p2"),
   };
 
-  // Cheap client-side checks first, so obvious mistakes never hit the network.
+  // cheap checks first so obvious mistakes don't hit the network
   if (!payload.full_name) return void (errEl.textContent = "Enter your full name");
   if (!payload.username)  return void (errEl.textContent = "Choose a username");
   if (!payload.email)     return void (errEl.textContent = "Enter your email");
@@ -152,11 +146,15 @@ async function doRegister() {
     return void (errEl.textContent = "Passwords do not match");
   }
 
+  const btn = document.getElementById("reg-btn");
+  setBusy(btn, true, "Creating account…");
+
   try {
     await post("/api/register", payload);
     toast("Account created — please sign in");
     navigate("login");
   } catch (e) {
+    setBusy(btn, false);
     errEl.textContent = e.message;
   }
 }

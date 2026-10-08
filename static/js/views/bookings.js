@@ -1,15 +1,10 @@
-/**
- * My bookings, checkout, payment and the confirmation screen.
- */
+// bookings list, checkout, payment, confirmation
 
 import { appRoot, del, get, post, store } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
-import { emptyState, esc, formatDate, formatMoneyExact, skeletonGrid, val } from "../utils.js";
+import { emptyState, esc, formatDate, formatMoneyExact, setBusy, skeletonRows, val } from "../utils.js";
 
-// ---------------------------------------------------------------------------
-// Booking list
-// ---------------------------------------------------------------------------
 
 export async function renderBookings() {
   if (!store.user?.logged_in) return navigate("login");
@@ -19,7 +14,7 @@ export async function renderBookings() {
       <div class="eyebrow">Your tickets</div>
       <h1 class="display">My bookings</h1>
     </div>
-    <div id="bookings-list">${skeletonGrid(3)}</div>`;
+    <div id="bookings-list">${skeletonRows(3)}</div>`;
 
   const list = document.getElementById("bookings-list");
 
@@ -50,7 +45,7 @@ function bookingRow(b) {
 
   const tierTag = b.tier_name ? `<span class="tag">${esc(b.tier_name)}</span>` : "";
 
-  // Data attributes keep this out of inline onclick string-escaping hell.
+  // data attributes, keeps this out of inline onclick escaping hell
   const action = pending
     ? `<button class="primary" data-act="resume"
          data-booking='${esc(JSON.stringify({
@@ -78,7 +73,7 @@ function bookingRow(b) {
     </div>`;
 }
 
-/** Delegated handler for the buttons rendered above. */
+// delegated handler for the buttons above
 export async function onBookingAction(clickEvent) {
   const button = clickEvent.target.closest("button[data-act]");
   if (!button) return;
@@ -86,11 +81,13 @@ export async function onBookingAction(clickEvent) {
   if (button.dataset.act === "cancel") {
     const ok = await confirmModal("Cancel booking", "Your tickets will be released back to the event.");
     if (!ok) return;
+    setBusy(button, true, "Cancelling…");
     try {
       await del(`/api/bookings/${button.dataset.id}`);
       toast("Booking cancelled");
       renderBookings();
     } catch (e) {
+      setBusy(button, false);
       toast(e.message, "error");
     }
   }
@@ -109,9 +106,6 @@ export async function onBookingAction(clickEvent) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Checkout
-// ---------------------------------------------------------------------------
 
 function cardFields() {
   return `
@@ -225,8 +219,7 @@ async function processPayment() {
     }
   }
 
-  btn.disabled = true;
-  btn.textContent = "Processing…";
+  setBusy(btn, true, "Processing…");
   await new Promise((r) => setTimeout(r, 1500));
 
   try {
@@ -235,15 +228,11 @@ async function processPayment() {
     store.lastBooking.payment_method = result.method;
     navigate("bookingConfirm");
   } catch (e) {
+    setBusy(btn, false);
     errEl.textContent = e.message;
-    btn.disabled = false;
-    btn.textContent = `Pay ${formatMoneyExact(store.lastBooking.total)}`;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Confirmation
-// ---------------------------------------------------------------------------
 
 export function renderBookingConfirm() {
   if (!store.lastBooking) return navigate("events");

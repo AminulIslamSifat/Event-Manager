@@ -1,11 +1,9 @@
-/**
- * Admin panel — platform stats, venue/artist management, CSV export.
- */
+// admin: stats, venue/artist management, csv export
 
 import { appRoot, del, get, post, put, store, loadReferenceData } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
-import { emptyState, esc, formatMoney, formatMoneyExact, val } from "../utils.js";
+import { blockLoader, emptyState, esc, formatMoney, setBusy, skeletonRows, val } from "../utils.js";
 
 let tab = "overview";
 
@@ -42,14 +40,14 @@ function paintTabs() {
 }
 
 async function renderTab() {
+  const box = document.getElementById("admin-body");
+  if (box) box.innerHTML = skeletonRows(3);
+
   if (tab === "overview") return renderOverview();
   if (tab === "venues")   return renderVenues();
   if (tab === "artists")  return renderArtists();
 }
 
-// ---------------------------------------------------------------------------
-// Overview
-// ---------------------------------------------------------------------------
 
 async function renderOverview() {
   const box = document.getElementById("admin-body");
@@ -100,26 +98,40 @@ async function renderOverview() {
 }
 
 async function exportCsv() {
-  const res = await fetch("/api/admin/export-bookings", {
-    headers: { "X-CSRF-Token": store.csrf },
-  });
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "bookings.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+  const btn = document.getElementById("export-btn");
+  setBusy(btn, true, "Exporting…");
+
+  try {
+    const res = await fetch("/api/admin/export-bookings", {
+      headers: { "X-CSRF-Token": store.csrf },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "bookings.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast(e.message, "error");
+  } finally {
+    setBusy(btn, false);
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Venues
-// ---------------------------------------------------------------------------
 
 async function renderVenues() {
   const box = document.getElementById("admin-body");
-  await loadReferenceData({ force: true });
-  const venues = await get("/api/venues?all=1");
+  box.innerHTML = blockLoader("Loading venues…");
+
+  let venues;
+  try {
+    await loadReferenceData({ force: true });
+    venues = await get("/api/venues?all=1");
+  } catch {
+    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load venues." });
+    return;
+  }
 
   box.innerHTML = `
     <div class="card" style="margin-bottom:1.5rem">
@@ -157,6 +169,8 @@ async function renderVenues() {
     </div>`;
 
   document.getElementById("v-add").onclick = async () => {
+    const btn = document.getElementById("v-add");
+    setBusy(btn, true, "Adding…");
     try {
       await post("/api/venues", {
         name: val("v-name"),
@@ -167,6 +181,7 @@ async function renderVenues() {
       toast("Venue added");
       renderVenues();
     } catch (e) {
+      setBusy(btn, false);
       toast(e.message, "error");
     }
   };
@@ -179,11 +194,13 @@ async function renderVenues() {
     btn.onclick = async () => {
       const ok = await confirmModal("Delete venue", "Venues used by an event are hidden instead of removed.");
       if (!ok) return;
+      setBusy(btn, true, "…");
       try {
         await del(`/api/venues/${btn.dataset.delVenue}`);
         toast("Venue removed");
         renderVenues();
       } catch (e) {
+        setBusy(btn, false);
         toast(e.message, "error");
       }
     };
@@ -216,13 +233,18 @@ async function editVenue(venue) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Artists
-// ---------------------------------------------------------------------------
 
 async function renderArtists() {
   const box = document.getElementById("admin-body");
-  const artists = await get("/api/artists?all=1");
+  box.innerHTML = blockLoader("Loading artists…");
+
+  let artists;
+  try {
+    artists = await get("/api/artists?all=1");
+  } catch {
+    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load artists." });
+    return;
+  }
 
   box.innerHTML = `
     <div class="card" style="margin-bottom:1.5rem">
@@ -258,6 +280,8 @@ async function renderArtists() {
     </div>`;
 
   document.getElementById("a-add").onclick = async () => {
+    const btn = document.getElementById("a-add");
+    setBusy(btn, true, "Adding…");
     try {
       await post("/api/artists", {
         name: val("a-name"),
@@ -267,6 +291,7 @@ async function renderArtists() {
       toast("Artist added");
       renderArtists();
     } catch (e) {
+      setBusy(btn, false);
       toast(e.message, "error");
     }
   };
@@ -279,11 +304,13 @@ async function renderArtists() {
     btn.onclick = async () => {
       const ok = await confirmModal("Delete artist", "Artists already on a lineup are hidden instead of removed.");
       if (!ok) return;
+      setBusy(btn, true, "…");
       try {
         await del(`/api/artists/${btn.dataset.delArtist}`);
         toast("Artist removed");
         renderArtists();
       } catch (e) {
+        setBusy(btn, false);
         toast(e.message, "error");
       }
     };

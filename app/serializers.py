@@ -1,8 +1,4 @@
-"""
-Row → JSON conversion helpers shared by the blueprints.
-
-Kept separate so every endpoint returns events in exactly the same shape.
-"""
+# row -> json helpers. shared so every endpoint returns the same event shape.
 
 import sqlite3
 
@@ -10,7 +6,7 @@ from . import pricing, thumbs
 
 
 def artist_rows(db: sqlite3.Connection, event_id: int) -> list[dict]:
-    """Artists booked for an event, with their snapshotted fee."""
+    # artists on an event, with the fee snapshot
     rows = db.execute(
         """
         SELECT ea.artist_id, ea.fee, a.name, a.genre
@@ -25,7 +21,7 @@ def artist_rows(db: sqlite3.Connection, event_id: int) -> list[dict]:
 
 
 def tier_rows(db: sqlite3.Connection, event_id: int) -> list[dict]:
-    """Ticket tiers for an event."""
+    # tiers for an event
     rows = db.execute(
         "SELECT id, name, price, quantity, sold FROM ticket_tiers WHERE event_id=? ORDER BY price DESC",
         (event_id,),
@@ -34,12 +30,8 @@ def tier_rows(db: sqlite3.Connection, event_id: int) -> list[dict]:
 
 
 def budget_for(row: sqlite3.Row, artist_fees: list[float] | None = None) -> dict:
-    """
-    Recompute the budget breakdown from stored event columns.
-
-    `artist_fees` is optional: pass it when we already fetched the artist
-    rows, otherwise the denormalised `artists_total` column is used.
-    """
+    # rebuild the budget from stored columns.
+    # pass artist_fees if already fetched, else falls back to artists_total
     keys = row.keys()
 
     def get(name, default=0):
@@ -63,16 +55,10 @@ def budget_for(row: sqlite3.Row, artist_fees: list[float] | None = None) -> dict
 
 
 def event_to_dict(row: sqlite3.Row, db=None, *, detailed: bool = False) -> dict:
-    """
-    Convert an event row into the API representation.
-
-    `detailed=True` also embeds the artist lineup and ticket tiers, which
-    the list view doesn't need.
-    """
+    # event row -> api dict. detailed=True adds lineup + tiers (list view doesn't need em)
     data = dict(row)
 
-    # Every event gets a picture: the uploaded one when present, otherwise the
-    # default illustration for its category.
+    # uploaded image if there is one, else the category default
     if not (data.get("image_url") or "").strip():
         data["image_url"] = thumbs.thumbnail_url(data.get("category"))
         data["image_is_default"] = True

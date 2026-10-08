@@ -1,11 +1,9 @@
-/**
- * Profile — account details, editing, and password change.
- */
+// profile: details, editing, password change
 
 import { appRoot, post, put, store } from "../api.js";
 import { navigate } from "../router.js";
 import { toast } from "../ui.js";
-import { esc, onEnter, val } from "../utils.js";
+import { esc, onEnter, setBusy, val } from "../utils.js";
 import { initialsFor, updateNav } from "../nav.js";
 
 let editing = false;
@@ -54,9 +52,7 @@ function paint() {
   else renderDetails(body, joined);
 }
 
-// ---------------------------------------------------------------------------
-// Read-only details
-// ---------------------------------------------------------------------------
+// read-only details
 
 function detailItem(label, value) {
   const empty = !value;
@@ -95,22 +91,26 @@ function renderDetails(body, joined) {
   document.getElementById("go-dashboard").onclick = () => navigate("dashboard");
   document.getElementById("go-bookings").onclick = () => navigate("bookings");
   document.getElementById("do-logout").onclick = async () => {
-    await post("/api/logout", {});
-    store.user = null;
-    updateNav();
-    navigate("events");
+    const btn = document.getElementById("do-logout");
+    setBusy(btn, true, "Logging out…");
+    try {
+      await post("/api/logout", {});
+      store.user = null;
+      updateNav();
+      navigate("events");
+    } catch {
+      setBusy(btn, false);
+    }
   };
 
-  // "Security" tab content lives below the details when not editing.
+  // security block sits under the details when not editing
   const sec = document.createElement("div");
   sec.style.marginTop = "1.5rem";
   body.appendChild(sec);
   renderSecurity(sec);
 }
 
-// ---------------------------------------------------------------------------
-// Edit form
-// ---------------------------------------------------------------------------
+// edit form
 
 function renderEditForm(body) {
   const u = store.user;
@@ -164,6 +164,9 @@ async function saveProfile() {
   if (!payload.full_name) return void (errEl.textContent = "Full name is required");
   if (!payload.email)     return void (errEl.textContent = "Email is required");
 
+  const btn = document.getElementById("save-profile");
+  setBusy(btn, true, "Saving…");
+
   try {
     const result = await put("/api/profile", payload);
     store.user = { ...store.user, ...result.user };
@@ -172,13 +175,12 @@ async function saveProfile() {
     editing = false;
     paint();
   } catch (e) {
+    setBusy(btn, false);
     errEl.textContent = e.message;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Security (password change)
-// ---------------------------------------------------------------------------
+// security / password change
 
 function renderSecurity(container) {
   container.innerHTML = `
@@ -214,15 +216,20 @@ async function changePassword() {
   if (newPassword !== confirmPassword) return void (errEl.textContent = "New passwords do not match");
   if (newPassword.length < 6) return void (errEl.textContent = "Password must be at least 6 characters");
 
+  const btn = document.getElementById("pw-btn");
+  setBusy(btn, true, "Updating…");
+
   try {
     await post("/api/change-password", {
       old_password: oldPassword,
       new_password: newPassword,
       confirm_password: confirmPassword,
     });
+    setBusy(btn, false);
     toast("Password updated");
     ["old-pw", "new-pw", "new-pw2"].forEach((id) => { document.getElementById(id).value = ""; });
   } catch (e) {
+    setBusy(btn, false);
     errEl.textContent = e.message;
   }
 }

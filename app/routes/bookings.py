@@ -1,15 +1,10 @@
-"""
-Ticket booking and payment.
-
-The booking lifecycle:
-
-    free event   ->  confirmed immediately
-    paid event   ->  pending_payment  ->  confirmed (after /pay)
-                                     ->  failed (rolled back, tickets returned)
-
-Tickets are reserved at booking time and released again on failure or
-cancellation, so the seat count is always honest.
-"""
+# booking + payment.
+#
+#   free  -> confirmed right away
+#   paid  -> pending_payment -> confirmed (/pay)
+#                            -> failed (rolled back, seats returned)
+#
+# seats are held on booking and released on failure/cancel, so the count stays honest.
 
 from flask import Blueprint, jsonify, request, session
 
@@ -19,17 +14,12 @@ from ..db import get_db
 bp = Blueprint("bookings", __name__, url_prefix="/api")
 
 
-# ---------------------------------------------------------------------------
-# Booking
-# ---------------------------------------------------------------------------
+# booking
 
 def _reserve(db, event_id: int, tier_id, quantity: int) -> bool:
-    """
-    Atomically decrement stock. Returns False when there wasn't enough.
-
-    The WHERE guard makes this safe under concurrency: if another request
-    grabbed the seats first, `rowcount` comes back 0 and we back out.
-    """
+    # atomic decrement, False if there wasn't enough.
+    # the WHERE guard is what makes this concurrency-safe -- if someone else
+    # grabbed the seats first rowcount comes back 0 and we back out.
     cur = db.execute(
         "UPDATE events SET tickets = tickets - ? WHERE id=? AND tickets >= ?",
         (quantity, event_id, quantity),
@@ -73,7 +63,7 @@ def book():
     if event["status"] != "published":
         return jsonify({"error": "This event is not on sale yet"}), 400
 
-    # Resolve the tier (when chosen) — it sets the price and has its own stock.
+    # tier, when picked, sets the price and has its own stock
     tier_name = ""
     unit_price = float(event["price"])
     tier = None
@@ -93,13 +83,13 @@ def book():
         unit_price = float(tier["price"])
         tier_name = tier["name"]
 
-    # The event-wide pool is the final authority, tier or not.
+    # event pool is the final say, tier or not
     if event["tickets"] < quantity:
         return jsonify({"error": f"Only {event['tickets']} tickets left"}), 400
 
     total = round(unit_price * quantity, 2)
 
-    # --- free events confirm instantly ---
+    # free -> confirm right away
     if total <= 0:
         if not _reserve(db, event_id, tier_id, quantity):
             db.rollback()
@@ -119,7 +109,7 @@ def book():
             "total": 0, "quantity": quantity, "free": True,
         })
 
-    # --- paid events reserve the seats until payment ---
+    # paid -> hold the seats until payment
     if not _reserve(db, event_id, tier_id, quantity):
         db.rollback()
         return jsonify({"error": "Those tickets just sold out"}), 409
@@ -139,12 +129,10 @@ def book():
     })
 
 
-# ---------------------------------------------------------------------------
-# Payment
-# ---------------------------------------------------------------------------
+# payment
 
 def _release_tickets(db, booking) -> None:
-    """Return reserved seats to the event and its tier."""
+    # give the seats back to the event and its tier
     db.execute("UPDATE events SET tickets = tickets + ? WHERE id=?",
                (booking["quantity"], booking["event_id"]))
     if booking["tier_id"]:
@@ -172,7 +160,7 @@ def pay():
     if not booking:
         return jsonify({"error": "booking not found or already paid"}), 404
 
-    # --- demo validation ---
+    # demo validation
     if method == "card":
         if len(card) < 13 or not card.isdigit():
             return jsonify({"error": "invalid card number"}), 400
@@ -182,7 +170,7 @@ def pay():
     import time
     txn = f"TXN-{int(time.time() * 1000)}-{booking_id}"
 
-    # A card ending 0000 always fails, so the failure path stays testable.
+    # 0000 always fails so the failure path stays testable
     if method == "card" and card.endswith("0000"):
         db.execute("UPDATE bookings SET status='failed', payment_method=?, transaction_id=? WHERE id=?",
                    (method, txn, booking_id))
@@ -196,9 +184,7 @@ def pay():
     return jsonify({"ok": True, "transaction_id": txn, "method": method})
 
 
-# ---------------------------------------------------------------------------
-# Listing & cancellation
-# ---------------------------------------------------------------------------
+# listing + cancellation
 
 @bp.get("/bookings")
 @login_required

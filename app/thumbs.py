@@ -1,14 +1,9 @@
-"""
-Default event thumbnails, one per category.
-
-Written as SVG at startup so they cost nothing to ship — no binary assets in
-the repo, and they stay crisp at any size. Used whenever an event has no
-uploaded image of its own.
-"""
+# one default svg thumb per category, generated at startup.
+# no binary assets, stays crisp at any size. used when an event has no uploaded image.
 
 from pathlib import Path
 
-# category -> (base colour, accent colour)
+# category -> (base, accent)
 PALETTE = {
     "Tech":      ("#1b2a4a", "#5b8dd6"),
     "Music":     ("#3a1f3d", "#c07ad6"),
@@ -19,7 +14,7 @@ PALETTE = {
     "General":   ("#2a2a2e", "#c9a94e"),
 }
 
-# Simple geometric glyph per category, drawn in a 100x100 box.
+# glyph per category, 100x100 box
 GLYPHS = {
     "Tech": (
         '<rect x="24" y="32" width="52" height="34" rx="4" fill="none" '
@@ -91,7 +86,7 @@ def _svg(category: str) -> str:
 
 
 def write_thumbnails(static_folder: str) -> int:
-    """Write one SVG per category into static/thumbs/. Returns the count."""
+    # one svg per category into static/thumbs, returns how many
     target = Path(static_folder) / "thumbs"
     target.mkdir(parents=True, exist_ok=True)
 
@@ -99,7 +94,7 @@ def write_thumbnails(static_folder: str) -> int:
     for category in PALETTE:
         path = target / f"{category.lower()}.svg"
         svg = _svg(category)
-        # Skip the write when nothing changed, so restarts stay quiet.
+        # only write if it actually changed, keeps restarts quiet
         if not path.exists() or path.read_text(encoding="utf-8") != svg:
             path.write_text(svg, encoding="utf-8")
             written += 1
@@ -107,7 +102,7 @@ def write_thumbnails(static_folder: str) -> int:
 
 
 def thumbnail_url(category: str | None) -> str:
-    """Public URL of the default thumbnail for a category."""
+    # public url for a category's default thumb
     key = (category or "General").strip().title()
     if key not in PALETTE:
         key = "General"

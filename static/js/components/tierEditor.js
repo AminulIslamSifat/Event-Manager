@@ -1,10 +1,8 @@
-/**
- * Dynamic ticket-tier editor (e.g. VIP / Regular / Student).
- */
+// ticket tier editor (VIP / Regular / Student)
 
 import { esc } from "../utils.js";
 
-/** One editable tier row. */
+// one tier row
 function tierRow(tier = {}) {
   return `
     <div class="tier-row">
@@ -15,7 +13,7 @@ function tierRow(tier = {}) {
     </div>`;
 }
 
-/** The editor container plus an "Add tier" button. */
+// container + add button
 export function tierEditorHtml(tiers = []) {
   const rows = tiers.length ? tiers.map(tierRow).join("") : "";
   return `
@@ -25,7 +23,7 @@ export function tierEditorHtml(tiers = []) {
     </button>`;
 }
 
-/** Read the current tier rows back out of the DOM. */
+// read the rows back out of the DOM
 export function readTiers() {
   return [...document.querySelectorAll("#tier-editor .tier-row")]
     .map((row) => ({
@@ -33,10 +31,10 @@ export function readTiers() {
       price: Number(row.querySelector(".tier-price").value) || 0,
       quantity: Number(row.querySelector(".tier-qty").value) || 0,
     }))
-    .filter((tier) => tier.name);   // ignore half-filled rows
+    .filter((tier) => tier.name);   // skip half-filled rows
 }
 
-/** Wire add/remove behaviour. */
+// add/remove
 export function wireTierEditor() {
   const editor = document.getElementById("tier-editor");
   const addButton = document.getElementById("tier-add");
@@ -46,7 +44,7 @@ export function wireTierEditor() {
     editor.insertAdjacentHTML("beforeend", tierRow());
   });
 
-  // Delegated: works for rows added later too.
+  // delegated, so it works on rows added later
   editor.addEventListener("click", (e) => {
     if (e.target.classList.contains("tier-remove")) {
       e.target.closest(".tier-row")?.remove();

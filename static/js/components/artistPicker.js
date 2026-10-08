@@ -1,11 +1,9 @@
-/**
- * Searchable, multi-select artist picker for the event form.
- */
+// searchable multi-select artist picker
 
 import { store } from "../api.js";
 import { esc, formatMoney } from "../utils.js";
 
-/** Render the artist list. `selectedIds` pre-ticks existing lineups. */
+// selectedIds pre-ticks an existing lineup
 export function artistPickerHtml(selectedIds = []) {
   const selected = new Set(selectedIds.map(Number));
 
@@ -31,7 +29,7 @@ export function artistPickerHtml(selectedIds = []) {
     <div class="artist-picker" id="artist-picker">${options}</div>`;
 }
 
-/** Wire the filter box and the clear button. */
+// filter box + clear button
 export function wireArtistPicker() {
   const search = document.getElementById("artist-search");
   const picker = document.getElementById("artist-picker");

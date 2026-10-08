@@ -1,12 +1,10 @@
-/**
- * Organiser dashboard — your events, drafts, and the publish flow.
- */
+// organiser dashboard + publish flow
 
 import { appRoot, del, get, post, store } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
 import {
-  emptyState, esc, formatDate, formatMoney, skeletonGrid, statusPill, val,
+  emptyState, esc, formatDate, formatMoney, setBusy, skeletonRows, statusPill, val,
 } from "../utils.js";
 
 export async function renderDashboard() {
@@ -18,7 +16,7 @@ export async function renderDashboard() {
       <h1 class="display">Your events</h1>
       <p class="sub">Create a production, track its budget, and publish when you are ready.</p>
     </div>
-    <div id="my-events">${skeletonGrid(3)}</div>`;
+    <div id="my-events">${skeletonRows(3)}</div>`;
 
   const box = document.getElementById("my-events");
 
@@ -91,11 +89,13 @@ function wireRowActions() {
           "This also removes every booking for it. This cannot be undone."
         );
         if (!ok) return;
+        setBusy(button, true, "Deleting…");
         try {
           await del(`/api/events/${id}`);
           toast("Event deleted");
           renderDashboard();
         } catch (e) {
+          setBusy(button, false);
           toast(e.message, "error");
         }
       }
@@ -103,9 +103,7 @@ function wireRowActions() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Publish — the platform-fee gate
-// ---------------------------------------------------------------------------
+// publish, the fee gate
 
 export async function renderPublish(id) {
   if (!store.user?.logged_in) return navigate("login");
@@ -183,8 +181,7 @@ export async function renderPublish(id) {
     const errEl = document.getElementById("err");
     errEl.textContent = "";
 
-    btn.disabled = true;
-    btn.textContent = "Processing…";
+    setBusy(btn, true, "Processing…");
 
     try {
       await post(`/api/events/${id}/publish`, {
@@ -194,9 +191,8 @@ export async function renderPublish(id) {
       toast("Event published — you are live!");
       navigate("detail", id);
     } catch (e) {
+      setBusy(btn, false);
       errEl.textContent = e.message;
-      btn.disabled = false;
-      btn.textContent = `Pay ${formatMoney(fee)} & publish`;
     }
   };
 }

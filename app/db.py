@@ -1,10 +1,5 @@
-"""
-Database layer: connection handling, schema creation, migrations and
-reference-data seeding (venues + artists).
-
-Everything writes through `get_db()` so we always get Row objects and a
-single place to change the connection strategy later.
-"""
+# db layer: connection, schema, migrations, seed data.
+# everything goes through get_db() so there's one place to change the strategy.
 
 import sqlite3
 
@@ -14,13 +9,9 @@ from . import sync
 
 
 def get_db() -> sqlite3.Connection:
-    """
-    Return the request-scoped connection, opening one if needed.
-
-    Uses sync.SyncConnection so every commit mirrors the tables it touched
-    up to MongoDB. Callers are unaffected — the connection is still an
-    ordinary sqlite3.Connection as far as they are concerned.
-    """
+    # request-scoped conn, opened on demand.
+    # SyncConnection mirrors touched tables to mongo on commit, but callers
+    # just see a normal sqlite3.Connection.
     if "db" not in g:
         g.db = sqlite3.connect(
             current_app.config["DATABASE"],
@@ -37,9 +28,7 @@ def close_db(_exception=None) -> None:
         db.close()
 
 
-# --------------------------------------------------------------------------
-# Schema
-# --------------------------------------------------------------------------
+# schema
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -123,11 +112,10 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
-# Columns added to `events` after the original release.
+# columns added to events after the first release.
 #
-# SQLite forbids non-constant defaults (like CURRENT_TIMESTAMP) in
-# ALTER TABLE ADD COLUMN, so `created_at` is added bare and then backfilled
-# by `_backfill_created_at()`.
+# sqlite won't take a non-constant default (CURRENT_TIMESTAMP) in ALTER TABLE,
+# so created_at goes in bare and gets backfilled after.
 EVENT_MIGRATIONS = [
     ("venue_id",            "INTEGER"),
     ("venue_name",          "TEXT DEFAULT ''"),
@@ -150,9 +138,8 @@ BOOKING_MIGRATIONS = [
     ("tier_name", "TEXT DEFAULT ''"),
 ]
 
-# Profile fields collected at signup and editable from the profile page.
-# `created_at` is added bare and backfilled later (same ALTER TABLE
-# restriction that applies to events).
+# profile fields from signup, editable later.
+# created_at bare + backfilled, same sqlite restriction as events.
 USER_MIGRATIONS = [
     ("full_name",  "TEXT DEFAULT ''"),
     ("email",      "TEXT DEFAULT ''"),
@@ -171,7 +158,7 @@ def _table_exists(db, table: str) -> bool:
 
 
 def _add_missing_columns(db, table: str, columns: list[tuple[str, str]]) -> None:
-    """Idempotently add columns that don't exist yet."""
+    # adds whatever columns are missing, safe to re-run
     if not _table_exists(db, table):
         return
     existing = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
@@ -181,7 +168,7 @@ def _add_missing_columns(db, table: str, columns: list[tuple[str, str]]) -> None
 
 
 def _backfill_timestamp(db, table: str, column: str = "created_at") -> None:
-    """Give pre-existing rows a timestamp, since the column was added late."""
+    # old rows predate the column, give em something
     if not _table_exists(db, table):
         return
     columns = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
@@ -191,7 +178,7 @@ def _backfill_timestamp(db, table: str, column: str = "created_at") -> None:
 
 
 def init_db() -> None:
-    """Create tables and run column migrations. Safe to call repeatedly."""
+    # create + migrate. safe to run every boot.
     db = get_db()
     db.executescript(SCHEMA)
     _add_missing_columns(db, "events", EVENT_MIGRATIONS)
@@ -200,7 +187,7 @@ def init_db() -> None:
     _backfill_timestamp(db, "events")
     _backfill_timestamp(db, "users")
 
-    # Ensure an admin account exists.
+    # make sure there's an admin
     from .auth import hash_password
     if not db.execute("SELECT 1 FROM users WHERE role='admin'").fetchone():
         db.execute(
@@ -208,15 +195,13 @@ def init_db() -> None:
             ("admin", hash_password("admin123"), "admin"),
         )
 
-    # Default settings.
+    # defaults
     db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('platform_fee', ?)",
                (str(current_app.config["PLATFORM_FEE"]),))
     db.commit()
 
 
-# --------------------------------------------------------------------------
-# Reference data — seeded once, editable afterwards by admins
-# --------------------------------------------------------------------------
+# reference data. seeded once, admins edit it after that.
 
 # (name, address, capacity, fee)
 VENUES = [
@@ -259,7 +244,7 @@ ARTISTS = [
 
 
 def seed_reference_data() -> None:
-    """Insert default venues/artists only when their tables are empty."""
+    # only seeds when the table is empty, so it never clobbers edits
     db = get_db()
 
     if not db.execute("SELECT 1 FROM venues LIMIT 1").fetchone():

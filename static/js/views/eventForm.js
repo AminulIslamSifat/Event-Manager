@@ -1,15 +1,10 @@
-/**
- * Create / edit event — the production form.
- *
- * Layout: fields on the left, live budget panel stuck on the right.
- * Any logged-in user can create an event; it saves as a draft and goes
- * live once the platform fee is paid.
- */
+// create/edit event form. fields left, sticky budget panel right.
+// saves as a draft, goes live once the platform fee is paid.
 
 import { appRoot, get, post, put, store, loadReferenceData } from "../api.js";
 import { navigate } from "../router.js";
 import { toast } from "../ui.js";
-import { esc, checked, onEnter, val, formatMoney } from "../utils.js";
+import { esc, checked, setBusy, spinner, val, formatMoney } from "../utils.js";
 import { artistPickerHtml, wireArtistPicker } from "../components/artistPicker.js";
 import { tierEditorHtml, readTiers, wireTierEditor } from "../components/tierEditor.js";
 import {
@@ -18,7 +13,7 @@ import {
 
 const CATEGORIES = ["General", "Tech", "Music", "Art", "Sports", "Food", "Education"];
 
-/** Read every field into the API payload shape. */
+// form -> api payload
 function collectPayload() {
   return {
     // basics
@@ -55,7 +50,7 @@ function collectPayload() {
   };
 }
 
-/** Venue <select> options, marking the one already chosen. */
+// venue options, marks the current one
 function venueOptions(selectedId) {
   return `<option value="">— Choose a venue —</option>` +
     store.venues.map((v) => `
@@ -69,7 +64,7 @@ function venueOptions(selectedId) {
       </option>`).join("");
 }
 
-/** The full form markup. `event` is empty for create, populated for edit. */
+// event is {} for create, populated for edit
 function formHtml(event = {}) {
   const isEdit = Boolean(event.id);
   const categoryOptions = CATEGORIES
@@ -235,7 +230,7 @@ function formHtml(event = {}) {
     </div>`;
 }
 
-/** Render the "this venue is located at …" preview line. */
+// the "this venue is located at ..." line
 function showVenueLocation(name, address) {
   const el = document.getElementById("venue-location");
   if (!el) return;
@@ -247,12 +242,9 @@ function showVenueLocation(name, address) {
                  (address ? ` — ${esc(address)}` : "");
 }
 
-/**
- * Wire the cover-image picker.
- *
- * Uploads as soon as a file is chosen and stores the returned URL in the
- * hidden #f-img field, so the rest of the form never deals with files.
- */
+// cover image picker.
+// uploads on pick, drops the url into hidden #f-img so the rest of the form
+// never has to deal with files.
 function wireImageUpload() {
   const fileInput = document.getElementById("f-image-file");
   const hidden = document.getElementById("f-img");
@@ -280,7 +272,8 @@ function wireImageUpload() {
     if (!file) return;
 
     status.style.color = "";
-    status.textContent = "Uploading...";
+    status.innerHTML = `${spinner(12)} Uploading…`;
+    fileInput.disabled = true;
 
     const body = new FormData();
     body.append("image", file);
@@ -299,6 +292,8 @@ function wireImageUpload() {
       status.style.color = "var(--danger)";
       status.textContent = err.message;
       fileInput.value = "";
+    } finally {
+      fileInput.disabled = false;
     }
   });
 
@@ -310,7 +305,7 @@ function wireImageUpload() {
   });
 }
 
-/** Wire the venue dropdown so it fills fee/capacity/name automatically. */
+// venue dropdown autofills fee/capacity/name
 function wireVenueSelect() {
   const select = document.getElementById("f-venue");
   if (!select) return;
@@ -323,26 +318,27 @@ function wireVenueSelect() {
     document.getElementById("f-capacity").value = opt.dataset.capacity || 0;
     document.getElementById("f-venue-name").value = opt.dataset.name || "";
 
-    // Ticket pool follows the venue capacity unless already set.
+    // ticket pool follows capacity unless already set
     const ticketsEl = document.getElementById("f-tickets");
     if (ticketsEl && !ticketsEl.value) ticketsEl.value = opt.dataset.capacity || 0;
 
     showVenueLocation(opt.dataset.name, opt.dataset.address);
 
-    // Venue changes affect the budget — let the panel know.
+    // venue affects the budget, tell the panel
     document.getElementById("f-venue-fee").dispatchEvent(new Event("input"));
   });
 }
 
-/** Shared setup for both create and edit. */
+// shared by create + edit
 async function mountForm(event = {}) {
+  appRoot.innerHTML = `<div class="block-loader">${spinner(22)}<span>Loading form…</span></div>`;
   await loadReferenceData();
   appRoot.innerHTML = formHtml(event);
 
   wireVenueSelect();
   wireArtistPicker();
 
-  // Editing an existing event: reflect its stored venue/location.
+  // editing: show the stored venue/location
   if (event?.id) showVenueLocation(event.venue_name || event.location, "");
   wireTierEditor();
   wireImageUpload();
@@ -354,18 +350,14 @@ async function mountForm(event = {}) {
 
   document.getElementById("form-back").onclick = () => navigate("dashboard");
 
-  // Initial paint once everything is wired.
+  // first paint
   await refreshBudget(panel);
 
   return recalc;
 }
 
-/**
- * Offer the calculated base price.
- *
- * Fills the field automatically only while it is still empty, so we never
- * overwrite a number the organiser typed themselves.
- */
+// offer the calculated base price.
+// only fills the field while it's empty -- never overwrites a typed number.
 function syncSuggestedPrice(tiers, event) {
   if (event?.id) return;                      // editing: leave prices alone
 
@@ -374,7 +366,7 @@ function syncSuggestedPrice(tiers, event) {
   const capEl = document.getElementById("f-capacity");
   if (!priceEl) return;
 
-  // Ticket pool follows venue capacity unless the organiser set their own.
+  // pool follows capacity unless they set their own
   if (ticketsEl && capEl && capEl.value && !ticketsEl.value) {
     ticketsEl.value = capEl.value;
   }
@@ -385,7 +377,7 @@ function syncSuggestedPrice(tiers, event) {
     priceEl.placeholder = `Suggested: ${suggested}`;
   }
 
-  // Surface the tier suggestions as one-click fills.
+  // tier suggestions as one-click fills
   const box = document.getElementById("tier-suggestions");
   if (box && tiers) {
     box.innerHTML = `
@@ -412,10 +404,8 @@ function syncSuggestedPrice(tiers, event) {
   }
 }
 
-/**
- * Client-side mirror of the server's rules, so mistakes are caught before
- * the request is sent. The server still validates independently.
- */
+// mirrors the server's rules so mistakes are caught before the request.
+// the server validates independently anyway.
 function validatePayload(p) {
   if (!p.title.trim())       return "Title is required";
   if (!p.description.trim()) return "Description is required";
@@ -448,7 +438,7 @@ export async function renderCreateEvent() {
 
     const payload = collectPayload();
 
-    // The venue capacity doubles as the ticket count when left blank.
+    // capacity doubles as the ticket count if left blank
     if (!payload.tickets && payload.venue_capacity) payload.tickets = payload.venue_capacity;
 
     const problem = validatePayload(payload);
@@ -458,11 +448,15 @@ export async function renderCreateEvent() {
       return;
     }
 
+    const btn = document.getElementById("submit-btn");
+    setBusy(btn, true, "Creating…");
+
     try {
       const result = await post("/api/events", payload);
       toast("Event created — pay the platform fee to publish");
       navigate("publish", result.id);
     } catch (e) {
+      setBusy(btn, false);
       errEl.textContent = e.message;
       errEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -495,11 +489,15 @@ export async function renderEditEvent(id) {
       return;
     }
 
+    const btn = document.getElementById("submit-btn");
+    setBusy(btn, true, "Saving…");
+
     try {
       await put(`/api/events/${id}`, payload);
       toast("Event updated");
       navigate("dashboard");
     } catch (e) {
+      setBusy(btn, false);
       errEl.textContent = e.message;
       errEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }

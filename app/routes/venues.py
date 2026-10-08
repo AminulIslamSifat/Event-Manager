@@ -1,9 +1,4 @@
-"""
-Venue reference data.
-
-Reads are public (the event form needs the list). Writes are admin-only,
-per the spec: "the admin will be one to add delete edit venue, artist".
-"""
+# venue reference data. public reads (the form needs em), admin writes.
 
 from flask import Blueprint, jsonify, request
 
@@ -14,7 +9,7 @@ bp = Blueprint("venues", __name__, url_prefix="/api/venues")
 
 
 def _payload(d: dict) -> tuple:
-    """Normalise an incoming venue payload into a DB-ready tuple."""
+    # payload -> db tuple
     return (
         (d.get("name") or "").strip(),
         d.get("address", ""),
@@ -88,7 +83,7 @@ def delete_venue(venue_id: int):
         return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
-    # Soft-delete when referenced by an event so past budgets stay intact.
+    # soft delete if an event points at it, so old budgets survive
     if db.execute("SELECT 1 FROM events WHERE venue_id=? LIMIT 1", (venue_id,)).fetchone():
         db.execute("UPDATE venues SET active=0 WHERE id=?", (venue_id,))
         db.commit()

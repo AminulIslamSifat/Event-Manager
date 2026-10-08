@@ -1,25 +1,18 @@
-"""
-Cloud sync layer.
-
-MongoDB is the source of truth; the local SQLite file is a cache.
-
-    startup :  MongoDB  ->  SQLite    (pull)
-    write   :  SQLite   ->  MongoDB   (push, on commit)
-
-SQLite keeps doing all the querying, so every existing `db.execute(...)` call
-continues to work untouched. The sync happens underneath via a trace callback
-that notes which tables a transaction touched, then mirrors those tables to
-Atlas when the transaction commits.
-
-If Atlas is unreachable the bot keeps running against the local cache and the
-pending writes are retried on the next successful commit.
-"""
+# mongo is the source of truth, sqlite is a cache.
+#
+#   startup :  mongo -> sqlite   (pull)
+#   write   :  sqlite -> mongo   (push, on commit)
+#
+# sqlite still does all the querying so db.execute() calls stay untouched.
+# a trace callback watches which tables a tx touched, then mirrors em on commit.
+#
+# if atlas is down we keep running on the local cache. NOTE: failed pushes are
+# dropped, not queued -- there is no retry.
 
 from __future__ import annotations
 
 import re
 import sqlite3
-import threading
 
 # INSERT [OR x] INTO t / UPDATE t / DELETE FROM t / REPLACE INTO t
 _WRITE_RE = re.compile(
@@ -32,7 +25,7 @@ _WRITE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Mirrored in this order so parent rows land before children on a pull.
+# order matters on pull -- parents land before children
 SYNCED_TABLES = (
     "users",
     "venues",
@@ -44,24 +37,18 @@ SYNCED_TABLES = (
     "settings",
 )
 
-# Tables whose primary key is not a surrogate `id`.
-KEY_OVERRIDES = {"settings": "key"}
 
 _state: dict = {
     "db": None,
     "enabled": False,
     "suspended": False,
-    "pending": set(),
 }
-_lock = threading.RLock()
 
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+# config
 
 def configure(app) -> None:
-    """Attach a MongoDB database handle from Flask config."""
+    # grab the mongo handle off flask config
     uri = app.config.get("MONGODB_URI")
     name = app.config.get("MONGODB_DB", "event_khujo_db")
 
@@ -94,17 +81,11 @@ def resume() -> None:
     _state["suspended"] = False
 
 
-# ---------------------------------------------------------------------------
-# Connection wrapper
-# ---------------------------------------------------------------------------
+# connection wrapper
 
 class SyncConnection(sqlite3.Connection):
-    """
-    SQLite connection that mirrors touched tables to MongoDB on commit.
-
-    Uses SQLite's trace hook to observe statements, so no caller has to
-    announce what it changed.
-    """
+    # mirrors touched tables to mongo on commit.
+    # uses sqlite's trace hook so callers never announce what they changed.
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -125,7 +106,7 @@ class SyncConnection(sqlite3.Connection):
         if not dirty or _state["suspended"] or not _state["enabled"]:
             return
 
-        # Pushing reads the same connection, so suppress re-entrancy.
+        # push reads this same conn -> suppress re-entrancy or we deadlock
         suspend()
         try:
             push_tables(self, dirty)
@@ -133,9 +114,7 @@ class SyncConnection(sqlite3.Connection):
             resume()
 
 
-# ---------------------------------------------------------------------------
-# Row helpers
-# ---------------------------------------------------------------------------
+# row helpers
 
 def _rows_as_dicts(db, table: str) -> list[dict]:
     cursor = db.execute(f"SELECT * FROM {table}")
@@ -143,22 +122,11 @@ def _rows_as_dicts(db, table: str) -> list[dict]:
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def _key_for(table: str) -> str:
-    return KEY_OVERRIDES.get(table, "id")
-
-
-# ---------------------------------------------------------------------------
-# Push: SQLite -> MongoDB
-# ---------------------------------------------------------------------------
+# push: sqlite -> mongo
 
 def push_tables(db, tables) -> int:
-    """
-    Mirror the given tables to MongoDB.
-
-    Each table is replaced wholesale. At this scale (hundreds of rows) that is
-    cheaper than diffing, and it removes any chance of a stale document
-    lingering after a delete.
-    """
+    # wholesale replace. at a few hundred rows that beats diffing, and a stale
+    # doc can never linger after a delete.
     database = _state["db"]
     if database is None:
         return 0
@@ -168,16 +136,14 @@ def push_tables(db, tables) -> int:
         try:
             rows = _rows_as_dicts(db, table)
         except sqlite3.OperationalError:
-            continue  # table not created yet
+            continue  # table doesn't exist yet
 
         collection = database[table]
         try:
+            collection.delete_many({})
             if rows:
-                collection.delete_many({})
-                # Mongo rejects duplicate _id, and `id` is fine to keep.
+                # keeping `id` is fine, it's `_id` that mongo hates dupes of
                 collection.insert_many(rows)
-            else:
-                collection.delete_many({})
             pushed += 1
         except Exception as exc:
             print(f"[sync] Push failed for '{table}': {exc}")
@@ -185,17 +151,11 @@ def push_tables(db, tables) -> int:
     return pushed
 
 
-# ---------------------------------------------------------------------------
-# Pull: MongoDB -> SQLite
-# ---------------------------------------------------------------------------
+# pull: mongo -> sqlite
 
 def pull_all(db) -> int:
-    """
-    Replace local tables with their cloud contents.
-
-    Only pulls a table when the cloud actually has documents, so a fresh
-    Atlas database never wipes a populated local cache.
-    """
+    # only pulls a table if the cloud actually has docs, so a fresh atlas
+    # never wipes a populated local cache.
     database = _state["db"]
     if database is None:
         return 0
@@ -203,12 +163,11 @@ def pull_all(db) -> int:
     suspend()
     pulled = 0
 
-    # Wipe children before parents, so no foreign key is ever left dangling.
+    # children before parents, no dangling fk
     delete_order = list(reversed(SYNCED_TABLES))
 
-    # Foreign keys are enforced per-connection, so they have to come off for
-    # the reload. The DELETE/INSERT sequence below restores consistency long
-    # before the pragma goes back on.
+    # fk enforcement is per-connection so it has to come off for the reload.
+    # the delete/insert below restores consistency before the pragma goes back on.
     try:
         db.execute("PRAGMA foreign_keys = OFF")
     except sqlite3.OperationalError:
