@@ -110,6 +110,72 @@
 
 .budget-result .hint { font-size: 0.72rem; color: var(--text-dim); }
 
+/* sell-out projection. the answer to "is this worth running". */
+.budget-projection {
+  margin-top: 0.9rem;
+  padding: 1rem;
+  border-radius: var(--r);
+  text-align: center;
+  border: 1px solid var(--line);
+  background: var(--input);
+}
+.budget-projection.good { border-color: rgba(106, 171, 123, 0.32); background: rgba(106, 171, 123, 0.07); }
+.budget-projection.bad  { border-color: rgba(192, 90, 90, 0.32);  background: rgba(192, 90, 90, 0.07); }
+.budget-projection.empty { opacity: 0.65; }
+
+.budget-projection .label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.budget-projection .value {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.2rem;
+  line-height: 1.15;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.budget-projection.good .value { color: var(--success); }
+.budget-projection.bad  .value { color: var(--danger); }
+.budget-projection.empty .value { color: var(--text-dim); }
+
+.budget-projection .caption {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+
+.proj-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.proj-stat { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; }
+.proj-stat .k { color: var(--text-dim); }
+.proj-stat .v { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+/* shown when price x pool cannot cover the net expense */
+.budget-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--r-sm);
+  background: rgba(192, 90, 90, 0.1);
+  border: 1px solid rgba(192, 90, 90, 0.32);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: left;
+}
+.budget-warning strong { color: var(--danger); font-weight: 600; }
+.budget-warning span { color: var(--text-soft); }
+
 /* artist picker */
 .artist-picker {
   max-height: 280px;
@@ -198,7 +264,20 @@
 .switch input:checked + .track { background: var(--gold-wash-2); }
 .switch input:checked + .track::before { transform: translateX(18px); background: var(--gold); }
 
-/* tier editor */
+/* tier editor. name | price | seats | remove */
+.tier-head {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 38px;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+  padding: 0 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
 .tier-row {
   display: grid;
   grid-template-columns: 1fr 110px 110px 38px;
@@ -207,6 +286,47 @@
   align-items: center;
 }
 .tier-row input { margin: 0; }
+
+/* allocation meter. shows seats handed out against the venue's capacity. */
+.tier-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+.tier-meter-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.tier-meter-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  transition: width 0.25s var(--ease);
+}
+.tier-meter-bar > i.under { background: var(--gold-dim); }
+.tier-meter-bar > i.ok    { background: var(--success); }
+.tier-meter-bar > i.over  { background: var(--danger); }
+
+.tier-meter-text {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tier-meter-text.ok    { color: var(--success); }
+.tier-meter-text.over  { color: var(--danger); }
+.tier-meter-text.under { color: var(--text-dim); }
+
+/* intro line under a section heading */
+.section-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: -0.6rem 0 1rem;
+  line-height: 1.55;
+}
 
 .tier-remove {
   width: 38px;
@@ -234,6 +354,20 @@
 }
 .pill.published { color: var(--success); background: rgba(106, 171, 123, 0.12); border: 1px solid rgba(106, 171, 123, 0.3); }
 .pill.draft     { color: var(--gold);    background: var(--gold-wash);             border: 1px solid var(--gold-line); }
+
+/* status dot. a ::before so it inherits the pill colour -- the old markup
+   used a literal ● glyph, which does not. */
+.pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* lineup chips already use inline-flex, so the mic icon just needs baseline */
+.artist-chip .ico { vertical-align: -0.2em; }
 
 /* lineup chips, detail page */
 .lineup { display: flex; flex-wrap: wrap; gap: 0.45rem; }
@@ -277,8 +411,12 @@
 }
 
 @media (max-width: 640px) {
+  /* the header no longer lines up once the rows reflow -- hide it */
+  .tier-head { display: none; }
   .tier-row { grid-template-columns: 1fr 1fr; }
   .tier-row .tier-remove { grid-column: span 2; width: 100%; }
+  .tier-meter { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+  .tier-meter-bar { width: 100%; }
   .ref-table { font-size: 0.78rem; }
   .ref-table th, .ref-table td { padding: 0.5rem 0.3rem; }
 }

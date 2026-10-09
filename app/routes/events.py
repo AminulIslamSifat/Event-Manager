@@ -55,41 +55,59 @@ def _validate(d: dict) -> str | None:
 
     if price < 0:
         return "Price cannot be negative"
-    if tickets < 1:
-        return "Must offer at least 1 ticket"
 
-    # can't sell more than the venue holds
-    if capacity > 0 and tickets > capacity:
-        return f"Ticket count ({tickets:,}) exceeds venue capacity ({capacity:,})"
-
-    # tiers have to fit inside the ticket pool
+    # tiers are the only place tickets exist -- there is no separate pool to
+    # validate against any more.
     tiers = d.get("tiers") or []
-    if tiers:
-        tier_total = 0
-        for tier in tiers:
-            name = (tier.get("name") or "").strip()
-            if not name:
-                return "Every ticket tier needs a name"
-            try:
-                qty = int(tier.get("quantity", 0) or 0)
-                tier_price = float(tier.get("price", 0) or 0)
-            except (TypeError, ValueError):
-                return f"Tier {name!r} has an invalid price or quantity"
-            if qty < 1:
-                return f"Tier {name!r} must have at least 1 ticket"
-            if tier_price < 0:
-                return f"Tier {name!r} cannot have a negative price"
-            tier_total += qty
+    if not tiers:
+        return "Add at least one ticket tier"
 
-        if tier_total > tickets:
-            return f"Tier quantities ({tier_total:,}) exceed the ticket pool ({tickets:,})"
+    tier_total = 0
+    for tier in tiers:
+        name = (tier.get("name") or "").strip()
+        if not name:
+            return "Every ticket tier needs a name"
+        try:
+            qty = int(tier.get("quantity", 0) or 0)
+            tier_price = float(tier.get("price", 0) or 0)
+        except (TypeError, ValueError):
+            return f"Tier {name!r} has an invalid price or quantity"
+        if qty < 1:
+            return f"Tier {name!r} must have at least 1 seat"
+        if tier_price < 0:
+            return f"Tier {name!r} cannot have a negative price"
+        tier_total += qty
+
+    # the venue is the limit that actually matters
+    if capacity > 0 and tier_total > capacity:
+        return (f"Allocated {tier_total:,} seats but the venue holds {capacity:,}"
+                f" — reduce a tier, or pick a bigger venue")
+
+    # keep the stored pool in step with the tiers
+    d["tickets"] = tier_total
+    # and derive the display price from the cheapest tier
+    d["price"] = min(float(t.get("price", 0) or 0) for t in tiers)
 
     return None
 
 
 def _budget_from_payload(d: dict) -> dict:
-    # budget for an incoming payload
+    # budget for an incoming payload.
+    #
+    # the divisor is the ticket pool -- what is actually on sale -- NOT the
+    # venue capacity. the old version preferred venue_capacity, so an organiser
+    # selling 100 tickets in a 1000-seat room got a price calculated as if all
+    # 1000 would sell. that under-prices by the ratio of the two.
     artist_fees = [float(f) for f in (d.get("artist_fees") or [])]
+    tickets = int(d.get("tickets", 0) or 0)
+    capacity = int(d.get("venue_capacity", 0) or 0)
+
+    # revenue needs the real tier mix, not a single unit price
+    tiers = [
+        (float(t.get("price", 0) or 0), int(t.get("quantity", 0) or 0))
+        for t in (d.get("tiers") or [])
+    ]
+
     result = calculate_budget(
         BudgetInput(
             venue_fee=float(d.get("venue_fee", 0) or 0),
@@ -97,7 +115,11 @@ def _budget_from_payload(d: dict) -> dict:
             organizer_costs=float(d.get("organizer_costs", 0) or 0),
             admin_margin=float(d.get("admin_margin", 0) or 0),
             sponsorship=float(d.get("sponsorship", 0) or 0),
-            capacity=int(d.get("venue_capacity", 0) or d.get("tickets", 0) or 0),
+            tiers=tiers,
+            # only fall back to capacity when no pool has been set at all
+            ticket_pool=tickets or capacity,
+            venue_capacity=capacity,
+            ticket_price=float(d.get("price", 0) or 0),
         )
     )
     return result.as_dict()

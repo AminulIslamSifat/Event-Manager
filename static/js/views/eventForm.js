@@ -4,14 +4,28 @@
 import { appRoot, get, post, put, store, loadReferenceData } from "../api.js";
 import { navigate } from "../router.js";
 import { toast } from "../ui.js";
-import { esc, checked, setBusy, spinner, val, formatMoney } from "../utils.js";
+import { esc, checked, icon, setBusy, spinner, val, formatMoney } from "../utils.js";
 import { artistPickerHtml, wireArtistPicker } from "../components/artistPicker.js";
-import { tierEditorHtml, readTiers, wireTierEditor } from "../components/tierEditor.js";
+import {
+  allocatedSeats, readTiers, tierEditorHtml, tierRow, updateTierMeter, wireTierEditor,
+} from "../components/tierEditor.js";
 import {
   refreshBudget, wireBudgetInputs, selectedArtistIds,
 } from "../components/budgetPanel.js";
 
 const CATEGORIES = ["General", "Tech", "Music", "Art", "Sports", "Food", "Education"];
+
+// price + pool come from the tier list.
+//   price = cheapest tier (the "from ৳X" shown on cards)
+//   pool  = total seats allocated across tiers
+function derivePricing() {
+  const tiers = readTiers();
+  if (!tiers.length) return { price: 0, tickets: 0 };
+  return {
+    price: Math.min(...tiers.map((t) => t.price)),
+    tickets: tiers.reduce((sum, t) => sum + t.quantity, 0),
+  };
+}
 
 // form -> api payload
 function collectPayload() {
@@ -38,9 +52,10 @@ function collectPayload() {
     // lineup
     artist_ids: selectedArtistIds(),
 
-    // ticketing
-    price: Number(val("f-price")) || 0,
-    tickets: Number(val("f-tickets")) || 0,
+    // ticketing. price and pool are DERIVED from the tiers -- there is no
+    // standalone price field any more. the server recomputes both anyway;
+    // these are sent so validation can run before the request.
+    ...derivePricing(),
     tiers: readTiers(),
 
     // optional safety
@@ -72,13 +87,13 @@ function formHtml(event = {}) {
     .join("");
 
   return `
-    <button class="back-btn" id="form-back">← Back</button>
+    <button class="back-btn" id="form-back">${icon("chevronLeft", 15)} Back</button>
 
     <div class="view-head">
       <div class="eyebrow">${isEdit ? "Editing" : "New production"}</div>
       <h1 class="display">${isEdit ? esc(event.title || "Event") : "Create an event"}</h1>
       <p class="sub">
-        Build the budget, pick the lineup, and set your ticket price.
+        Build the budget, pick the lineup, and split the seats into tiers.
         ${isEdit ? "" : "Your event is saved as a draft until you publish it."}
       </p>
     </div>
@@ -152,9 +167,9 @@ function formHtml(event = {}) {
                      value="${event.organizer_costs || ""}">
             </div>
             <div style="flex:1">
-              <label class="field-label">Platform margin (৳)</label>
-              <input id="f-margin" type="number" min="0" step="1000" placeholder="100000"
-                     value="${event.admin_margin ?? 100000}">
+              <label class="field-label">Your margin (৳)</label>
+              <input id="f-margin" type="number" min="0" step="1000" placeholder="0"
+                     value="${event.admin_margin || ""}">
             </div>
           </div>
 
@@ -163,26 +178,14 @@ function formHtml(event = {}) {
                  value="${event.sponsorship || ""}">
         </section>
 
-        <!-- 5. Ticketing -->
+        <!-- 5. Tickets -->
         <section class="form-section">
-          <h3><span class="step">5</span> Ticketing</h3>
-          <div style="display:flex;gap:0.75rem">
-            <div style="flex:1">
-              <label class="field-label">Ticket price (৳)</label>
-              <input id="f-price" type="number" min="0" step="1" placeholder="0 for free"
-                     value="${event.price ?? ""}">
-            </div>
-            <div style="flex:1">
-              <label class="field-label">Total tickets</label>
-              <input id="f-tickets" type="number" min="1" placeholder="20000"
-                     value="${event.tickets ?? ""}">
-            </div>
-          </div>
+          <h3><span class="step">5</span> Tickets</h3>
+          <p class="section-hint">
+            Seats come from the venue. Split them into tiers — every ticket belongs to one.
+          </p>
 
-          <label class="field-label" style="margin-top:0.5rem">
-            Tiers <span style="text-transform:none;letter-spacing:0">(optional — VIP, Student, …)</span>
-          </label>
-          <div id="tier-suggestions" style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;margin-bottom:0.6rem"></div>
+          <div id="tier-suggestions" style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;margin-bottom:0.85rem"></div>
           ${tierEditorHtml(event.tiers || [])}
         </section>
 
@@ -238,7 +241,7 @@ function showVenueLocation(name, address) {
     el.textContent = "";
     return;
   }
-  el.innerHTML = `📍 <strong style="color:var(--text-soft)">${esc(name)}</strong>` +
+  el.innerHTML = `${icon("pin", 13)} <strong style="color:var(--text-soft)">${esc(name)}</strong>` +
                  (address ? ` — ${esc(address)}` : "");
 }
 
@@ -318,15 +321,29 @@ function wireVenueSelect() {
     document.getElementById("f-capacity").value = opt.dataset.capacity || 0;
     document.getElementById("f-venue-name").value = opt.dataset.name || "";
 
-    // ticket pool follows capacity unless already set
-    const ticketsEl = document.getElementById("f-tickets");
-    if (ticketsEl && !ticketsEl.value) ticketsEl.value = opt.dataset.capacity || 0;
+    // seats are the venue's, so hand the whole capacity to a lone empty tier.
+    // once there is more than one tier the organiser is splitting on purpose
+    // and we leave their numbers alone.
+    const capacity = Number(opt.dataset.capacity) || 0;
+    const rows = [...document.querySelectorAll("#tier-editor .tier-row")];
+    if (rows.length === 1 && capacity) {
+      const qty = rows[0].querySelector(".tier-qty");
+      if (qty && !qty.value) qty.value = capacity;
+    }
 
     showVenueLocation(opt.dataset.name, opt.dataset.address);
+    refreshTierMeter();
 
     // venue affects the budget, tell the panel
     document.getElementById("f-venue-fee").dispatchEvent(new Event("input"));
+    document.getElementById("f-capacity").dispatchEvent(new Event("input"));
   });
+}
+
+// the meter tracks capacity, so it has to repaint on both tier and venue edits
+function refreshTierMeter() {
+  const cap = Number(val("f-capacity")) || 0;
+  updateTierMeter(cap);
 }
 
 // shared by create + edit
@@ -340,13 +357,24 @@ async function mountForm(event = {}) {
 
   // editing: show the stored venue/location
   if (event?.id) showVenueLocation(event.venue_name || event.location, "");
-  wireTierEditor();
+
+  // a fresh event starts with one tier holding the whole room. the organiser
+  // adds tiers to split it, rather than starting from an empty list.
+  const editor = document.getElementById("tier-editor");
+  if (editor && !editor.querySelector(".tier-row")) {
+    editor.insertAdjacentHTML("beforeend", tierRow({ name: "Regular" }));
+  }
+
   wireImageUpload();
 
   const panel = document.getElementById("budget-panel");
   const recalc = wireBudgetInputs(panel, {
-    onRecalculate: ({ suggested_tiers: tiers } = {}) => syncSuggestedPrice(tiers, event),
+    onRecalculate: () => renderQuickAddChips(event),
   });
+
+  // wired AFTER recalc exists -- the callback closes over it
+  wireTierEditor({ onAllocationChange: () => { refreshTierMeter(); recalc?.(); } });
+  refreshTierMeter();
 
   document.getElementById("form-back").onclick = () => navigate("dashboard");
 
@@ -356,52 +384,48 @@ async function mountForm(event = {}) {
   return recalc;
 }
 
-// offer the calculated base price.
-// only fills the field while it's empty -- never overwrites a typed number.
-function syncSuggestedPrice(tiers, event) {
-  if (event?.id) return;                      // editing: leave prices alone
-
-  const priceEl = document.getElementById("f-price");
-  const ticketsEl = document.getElementById("f-tickets");
-  const capEl = document.getElementById("f-capacity");
-  if (!priceEl) return;
-
-  // pool follows capacity unless they set their own
-  if (ticketsEl && capEl && capEl.value && !ticketsEl.value) {
-    ticketsEl.value = capEl.value;
-  }
-
-  const suggested = tiers?.base ?? 0;
-  if (!priceEl.value && suggested > 0) {
-    priceEl.value = suggested;
-    priceEl.placeholder = `Suggested: ${suggested}`;
-  }
-
-  // tier suggestions as one-click fills
+// quick-add chips.
+//
+// prices are relative to the cheapest tier the organiser has ALREADY priced --
+// not to the server's break-even figure. break-even is net/capacity, so with no
+// prices entered yet it collapses to a near-zero number and the chips end up
+// offering nonsense like "VIP BDT 12".
+function renderQuickAddChips(event) {
+  if (event?.id) return;                      // editing: leave the lineup alone
   const box = document.getElementById("tier-suggestions");
-  if (box && tiers) {
-    box.innerHTML = `
-      <span class="muted" style="font-size:0.75rem">Quick add:</span>
-      <button type="button" class="ghost" data-tier="Regular" data-price="${tiers.base}"
-              style="padding:0.25rem 0.6rem;font-size:0.75rem">Regular ৳${tiers.base}</button>
-      <button type="button" class="ghost" data-tier="VIP" data-price="${tiers.vip}"
-              style="padding:0.25rem 0.6rem;font-size:0.75rem">VIP ৳${tiers.vip}</button>
-      <button type="button" class="ghost" data-tier="Student" data-price="${tiers.student}"
-              style="padding:0.25rem 0.6rem;font-size:0.75rem">Student ৳${tiers.student}</button>`;
+  if (!box) return;
 
-    box.querySelectorAll("button[data-tier]").forEach((btn) => {
-      btn.onclick = () => {
-        const editor = document.getElementById("tier-editor");
-        editor.insertAdjacentHTML("beforeend", `
-          <div class="tier-row">
-            <input class="tier-name" value="${btn.dataset.tier}">
-            <input class="tier-price" type="number" value="${btn.dataset.price}">
-            <input class="tier-qty" type="number" placeholder="Qty">
-            <button type="button" class="tier-remove" title="Remove tier">×</button>
-          </div>`);
-      };
-    });
-  }
+  const priced = readTiers().map((t) => t.price).filter((p) => p > 0);
+  const anchor = priced.length ? Math.min(...priced) : 0;
+  const round = (n) => Math.round(n);
+
+  const chip = (name, price) => {
+    const label = price > 0 ? `${name} ৳${price}` : name;
+    return `<button type="button" class="ghost" data-tier="${name}" data-price="${price || ""}"
+                    style="padding:0.25rem 0.6rem;font-size:0.75rem">${label}</button>`;
+  };
+
+  box.innerHTML = `<span class="muted" style="font-size:0.75rem">Quick add:</span>`
+    + chip("Regular", round(anchor))
+    + chip("VIP", round(anchor * 2))
+    + chip("Student", round(anchor * 0.6));
+
+  box.querySelectorAll("button[data-tier]").forEach((btn) => {
+    btn.onclick = () => {
+      // only claim seats that are actually free. if the venue is fully
+      // allocated this stays blank and the meter shows 0 remaining, which is
+      // the honest answer -- the organiser has to free seats up first.
+      const remaining = Math.max(0, (Number(val("f-capacity")) || 0) - allocatedSeats());
+
+      document.getElementById("tier-editor").insertAdjacentHTML("beforeend", tierRow({
+        name: btn.dataset.tier,
+        price: btn.dataset.price,
+        quantity: remaining || "",
+      }));
+      refreshTierMeter();
+      document.getElementById("f-capacity").dispatchEvent(new Event("input"));
+    };
+  });
 }
 
 // mirrors the server's rules so mistakes are caught before the request.
@@ -411,19 +435,20 @@ function validatePayload(p) {
   if (!p.description.trim()) return "Description is required";
   if (!p.date)               return "Pick a date and time";
   if (!p.location.trim())    return "Pick a venue — it sets the location";
-  if (p.tickets < 1)         return "Offer at least 1 ticket";
 
+  if (!p.tiers.length) return "Add at least one ticket tier";
+
+  const nameless = p.tiers.find((t) => !t.name.trim());
+  if (nameless) return "Every ticket tier needs a name";
+
+  const empty = p.tiers.find((t) => (t.quantity || 0) < 1);
+  if (empty) return `Tier '${empty.name}' needs at least 1 seat`;
+
+  // p.tickets is the sum of the tiers, so comparing the two was a tautology.
+  // the real limit is the venue.
   if (p.venue_capacity > 0 && p.tickets > p.venue_capacity) {
-    return `Ticket count (${p.tickets.toLocaleString()}) exceeds venue capacity (${p.venue_capacity.toLocaleString()})`;
+    return `Allocated ${p.tickets.toLocaleString()} seats but the venue holds ${p.venue_capacity.toLocaleString()}`;
   }
-
-  const tierTotal = p.tiers.reduce((sum, t) => sum + (t.quantity || 0), 0);
-  if (tierTotal > p.tickets) {
-    return `Tier quantities (${tierTotal.toLocaleString()}) exceed the ticket pool (${p.tickets.toLocaleString()})`;
-  }
-
-  const emptyTier = p.tiers.find((t) => !t.name.trim());
-  if (emptyTier) return "Every ticket tier needs a name";
 
   return null;
 }
@@ -437,9 +462,6 @@ export async function renderCreateEvent() {
     errEl.textContent = "";
 
     const payload = collectPayload();
-
-    // capacity doubles as the ticket count if left blank
-    if (!payload.tickets && payload.venue_capacity) payload.tickets = payload.venue_capacity;
 
     const problem = validatePayload(payload);
     if (problem) {

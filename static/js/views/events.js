@@ -5,27 +5,29 @@ import { navigate } from "../router.js";
 import { clearSearch, setSearchBusy } from "../nav.js";
 import { toast } from "../ui.js";
 import {
-  categoryIcon, emptyState, esc, formatDate, formatMoney,
+  emptyState, esc, formatDate, formatMoney, icon,
   priceLabel, setBusy, skeletonGrid, val,
 } from "../utils.js";
 
 
 function eventCard(event) {
   const { text, free } = priceLabel(event.price);
-  const thumb = event.image_url
-    ? `<img src="${esc(event.image_url)}" alt="" onerror="this.remove()">`
-    : `<span class="thumb-emoji">${categoryIcon(event.category)}</span>`;
+  // the api always fills image_url with the category default, so this is
+  // effectively unconditional. the onerror still guards a broken upload.
+  const thumb = `<img src="${esc(event.image_url || "")}" alt="" onerror="this.remove()">`;
 
   return `
-    <article class="card event-card" onclick="navigate('detail',${event.id})">
+    <article class="card event-card" role="button" tabindex="0"
+             onclick="navigate('detail',${event.id})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('detail',${event.id})}">
       <div class="event-thumb">${thumb}</div>
       <div class="event-body">
         <h3>${esc(event.title)}</h3>
+        <div class="event-when">${icon("calendar", 13)} ${formatDate(event.date)}</div>
         <div class="meta">
-          <span class="tag">${formatDate(event.date)}</span>
           <span class="tag">${esc(event.category || "General")}</span>
+          <span class="tag"><span class="txt">${icon("pin", 13)} ${esc(event.location)}</span></span>
         </div>
-        <div class="meta"><span class="tag">📍 ${esc(event.location)}</span></div>
         <div class="event-foot">
           <span class="price${free ? " free" : ""}">${text}</span>
           <span class="tickets-left">${event.tickets} left</span>
@@ -95,7 +97,7 @@ export async function loadEvents() {
 
     if (!data.events.length) {
       grid.innerHTML = emptyState({
-        icon: "🔍",
+        icon: "search",
         message: "No events match your search.",
         actionLabel: "Clear filters",
         action: "clearFilters()",
@@ -107,7 +109,7 @@ export async function loadEvents() {
     grid.innerHTML = `<div class="grid">${data.events.map(eventCard).join("")}</div>`;
     renderPagination(data.pages);
   } catch {
-    grid.innerHTML = emptyState({ icon: "⚠️", message: "Couldn't load events. Try again." });
+    grid.innerHTML = emptyState({ icon: "warning", message: "Couldn't load events. Try again." });
   } finally {
     setSearchBusy(false);
   }
@@ -134,7 +136,7 @@ function renderPagination(totalPages) {
     `<button ${disabled ? "disabled" : ""} class="${active ? "active" : ""}"
        onclick="goToPage(${page})">${label}</button>`;
 
-  const parts = [btn("←", store.page - 1, { disabled: store.page <= 1 })];
+  const parts = [btn(icon("chevronLeft", 15), store.page - 1, { disabled: store.page <= 1 })];
 
   for (let i = 1; i <= totalPages; i++) {
     const far = totalPages > 7 && Math.abs(i - store.page) > 2 && i !== 1 && i !== totalPages;
@@ -145,7 +147,7 @@ function renderPagination(totalPages) {
     parts.push(btn(i, i, { active: i === store.page }));
   }
 
-  parts.push(btn("→", store.page + 1, { disabled: store.page >= totalPages }));
+  parts.push(btn(icon("chevronRight", 15), store.page + 1, { disabled: store.page >= totalPages }));
   box.innerHTML = parts.join("");
 }
 
@@ -170,21 +172,19 @@ export async function renderDetail(id) {
   try {
     event = await get(`/api/events/${id}`);
   } catch {
-    appRoot.innerHTML = emptyState({ icon: "🚫", message: "Event not found." });
+    appRoot.innerHTML = emptyState({ icon: "ban", message: "Event not found." });
     return;
   }
 
   const { text, free } = priceLabel(event.price);
-  const hero = event.image_url
-    ? `<img src="${esc(event.image_url)}" alt="" onerror="this.remove()">`
-    : categoryIcon(event.category);
+  const hero = `<img src="${esc(event.image_url || "")}" alt="" onerror="this.remove()">`;
 
   // lineup chips, only if artists were booked
   const lineup = event.artists?.length
     ? `<div style="margin:1.25rem 0">
          <div class="field-label">Lineup</div>
          <div class="lineup">
-           ${event.artists.map((a) => `<span class="artist-chip">🎤 ${esc(a.name)}</span>`).join("")}
+           ${event.artists.map((a) => `<span class="artist-chip">${icon("mic", 13)} ${esc(a.name)}</span>`).join("")}
          </div>
        </div>`
     : "";
@@ -229,13 +229,13 @@ export async function renderDetail(id) {
     : "";
 
   appRoot.innerHTML = `
-    <button class="back-btn" onclick="navigate('events')">← All events</button>
+    <button class="back-btn" onclick="navigate('events')">${icon("chevronLeft", 15)} All events</button>
     <div style="max-width:720px;margin:0 auto">
       <div class="detail-hero">${hero}</div>
       <h1 class="display detail-title">${esc(event.title)}</h1>
       <div class="meta">
-        <span class="tag">📅 ${formatDate(event.date)}</span>
-        <span class="tag">📍 ${esc(event.location)}</span>
+        <span class="tag">${icon("calendar", 13)} ${formatDate(event.date)}</span>
+        <span class="tag">${icon("pin", 13)} ${esc(event.location)}</span>
         <span class="tag">${esc(event.category || "General")}</span>
       </div>
       <p class="detail-desc">${esc(event.description)}</p>

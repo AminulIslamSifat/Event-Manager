@@ -3,7 +3,7 @@
 import { appRoot, del, get, post, put, store, loadReferenceData } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
-import { blockLoader, emptyState, esc, formatMoney, setBusy, skeletonRows, val } from "../utils.js";
+import { blockLoader, emptyState, esc, formatMoney, icon, setBusy, skeletonRows, val } from "../utils.js";
 
 let tab = "overview";
 
@@ -86,14 +86,14 @@ async function renderOverview() {
       </div>
 
       <button class="ghost" id="export-btn" style="width:100%;margin-top:0.5rem">
-        ⬇ Export bookings CSV
+        ${icon("download", 15)} Export bookings CSV
       </button>
 
       ${popular}`;
 
     document.getElementById("export-btn").onclick = exportCsv;
   } catch {
-    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load stats." });
+    box.innerHTML = emptyState({ icon: "warning", message: "Could not load stats." });
   }
 }
 
@@ -129,7 +129,7 @@ async function renderVenues() {
     await loadReferenceData({ force: true });
     venues = await get("/api/venues?all=1");
   } catch {
-    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load venues." });
+    box.innerHTML = emptyState({ icon: "warning", message: "Could not load venues." });
     return;
   }
 
@@ -242,7 +242,7 @@ async function renderArtists() {
   try {
     artists = await get("/api/artists?all=1");
   } catch {
-    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load artists." });
+    box.innerHTML = emptyState({ icon: "warning", message: "Could not load artists." });
     return;
   }
 

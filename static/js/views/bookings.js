@@ -3,7 +3,7 @@
 import { appRoot, del, get, post, store } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
-import { emptyState, esc, formatDate, formatMoneyExact, setBusy, skeletonRows, val } from "../utils.js";
+import { emptyState, esc, formatDate, formatMoneyExact, icon, setBusy, skeletonRows, val } from "../utils.js";
 
 
 export async function renderBookings() {
@@ -23,7 +23,7 @@ export async function renderBookings() {
 
     if (!bookings.length) {
       list.innerHTML = emptyState({
-        icon: "🎫",
+        icon: "ticket",
         message: "You haven't booked anything yet.",
         actionLabel: "Browse events",
         action: "navigate('events')",
@@ -33,15 +33,15 @@ export async function renderBookings() {
 
     list.innerHTML = bookings.map(bookingRow).join("");
   } catch {
-    list.innerHTML = emptyState({ icon: "⚠️", message: "Couldn't load your bookings." });
+    list.innerHTML = emptyState({ icon: "warning", message: "Couldn't load your bookings." });
   }
 }
 
 function bookingRow(b) {
   const pending = b.status === "pending_payment";
   const statusTag = pending
-    ? `<span class="tag gold">⏳ Pending payment</span>`
-    : `<span class="tag success">✓ Confirmed</span>`;
+    ? `<span class="tag gold">${icon("clock", 13)} Pending payment</span>`
+    : `<span class="tag success">${icon("check", 13)} Confirmed</span>`;
 
   const tierTag = b.tier_name ? `<span class="tag">${esc(b.tier_name)}</span>` : "";
 
@@ -59,8 +59,8 @@ function bookingRow(b) {
       <div class="info">
         <h3 style="margin-bottom:0.5rem">${esc(b.title)}</h3>
         <div class="meta">
-          <span class="tag">📅 ${formatDate(b.date)}</span>
-          <span class="tag">📍 ${esc(b.location)}</span>
+          <span class="tag">${icon("calendar", 13)} ${formatDate(b.date)}</span>
+          <span class="tag">${icon("pin", 13)} ${esc(b.location)}</span>
           ${tierTag}
           ${statusTag}
         </div>
@@ -132,7 +132,7 @@ export function renderPayment() {
   const b = store.lastBooking;
 
   appRoot.innerHTML = `
-    <button class="back-btn" id="checkout-back">← Back</button>
+    <button class="back-btn" id="checkout-back">${icon("chevronLeft", 15)} Back</button>
     <div class="auth-wrap" style="margin-top:0">
       <h1 class="display" style="font-size:1.6rem">Checkout</h1>
       <p class="sub">Complete payment to confirm your tickets.</p>
@@ -145,9 +145,9 @@ export function renderPayment() {
         </div>
 
         <div class="pay-methods" id="pay-methods">
-          <button class="active" data-method="card"  id="pm-card">💳 Card</button>
-          <button data-method="bkash" id="pm-bkash">📱 bKash</button>
-          <button data-method="nagad" id="pm-nagad">📱 Nagad</button>
+          <button class="active" data-method="card"  id="pm-card">${icon("card", 15)} Card</button>
+          <button data-method="bkash" id="pm-bkash">${icon("phone", 15)} bKash</button>
+          <button data-method="nagad" id="pm-nagad">${icon("phone", 15)} Nagad</button>
         </div>
 
         <div id="err" class="error"></div>
@@ -254,7 +254,7 @@ export function renderBookingConfirm() {
 
   appRoot.innerHTML = `
     <div class="card confirm-box" style="max-width:480px;margin:2rem auto">
-      <div class="confirm-check">✓</div>
+      <div class="confirm-check">${icon("check", 26)}</div>
       <h2 class="display">You're in!</h2>
       <p class="muted" style="margin-bottom:1.5rem">${esc(b.title)}</p>
       <div class="summary" style="text-align:left">${rows.join("")}</div>

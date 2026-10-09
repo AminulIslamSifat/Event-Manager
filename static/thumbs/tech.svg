@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="600" height="600" role="img" aria-label="Tech event">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" role="img" aria-label="Tech event">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#1b2a4a"/>
       <stop offset="100%" stop-color="#0d0d0f"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+    <radialGradient id="glow" cx="50%" cy="50%" r="55%">
       <stop offset="0%" stop-color="#5b8dd6" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#5b8dd6" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="100" height="100" fill="url(#bg)"/>
-  <rect width="100" height="100" fill="url(#glow)"/>
-  <rect x="24" y="32" width="52" height="34" rx="4" fill="none" stroke="#5b8dd6" stroke-width="3"/><path d="M40 74h20" stroke="#5b8dd6" stroke-width="3" stroke-linecap="round"/><path d="M50 66v8" stroke="#5b8dd6" stroke-width="3"/><path d="M36 46l-6 6 6 6M64 46l6 6-6 6" stroke="#5b8dd6" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="200" height="100" fill="url(#bg)"/>
+  <rect width="200" height="100" fill="url(#glow)"/>
+  <g transform="translate(100 50) scale(0.5) translate(-50 -50)"><rect x="24" y="32" width="52" height="34" rx="4" fill="none" stroke="#5b8dd6" stroke-width="3"/><path d="M40 74h20" stroke="#5b8dd6" stroke-width="3" stroke-linecap="round"/><path d="M50 66v8" stroke="#5b8dd6" stroke-width="3"/><path d="M36 46l-6 6 6 6M64 46l6 6-6 6" stroke="#5b8dd6" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg>

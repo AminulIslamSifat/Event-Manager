@@ -29,7 +29,12 @@ export async function initCsrf() {
 }
 
 // api request. throws with the server's message on any non-2xx.
-export async function api(path, options = {}) {
+//
+// the csrf token is tied to the session cookie, and the server can drop that
+// cookie out from under us (logging out, or /api/me clearing a session whose
+// user row is gone). when that happens the token we hold is dead and every
+// write fails forever. so: on a csrf rejection, re-sync once and replay.
+export async function api(path, options = {}, _retried = false) {
   const res = await fetch(path, {
     ...options,
     headers: {
@@ -40,6 +45,12 @@ export async function api(path, options = {}) {
   });
 
   const data = await res.json().catch(() => ({}));
+
+  if (res.status === 403 && data.error === "invalid csrf token" && !_retried) {
+    await initCsrf();
+    return api(path, options, true);
+  }
+
   if (!res.ok) throw new Error(data.error || "Something went wrong");
   return data;
 }

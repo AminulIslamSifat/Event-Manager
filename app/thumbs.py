@@ -67,20 +67,25 @@ def _svg(category: str) -> str:
     base, accent = PALETTE.get(category, PALETTE["General"])
     glyph = GLYPHS.get(category, GLYPHS["General"]).format(a=accent)
 
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="600" height="600" role="img" aria-label="{category} event">
+    # 2:1 canvas, so the art matches the .event-thumb / .detail-hero box and
+    # object-fit:cover has nothing left to crop. the glyph is authored in a
+    # 100x100 box, so it gets scaled down and centred -- that keeps it inside
+    # the safe area even when a wider container (the detail hero, which is
+    # clamped by max-height) trims a few units off the top and bottom.
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" role="img" aria-label="{category} event">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="{base}"/>
       <stop offset="100%" stop-color="#0d0d0f"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+    <radialGradient id="glow" cx="50%" cy="50%" r="55%">
       <stop offset="0%" stop-color="{accent}" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="{accent}" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="100" height="100" fill="url(#bg)"/>
-  <rect width="100" height="100" fill="url(#glow)"/>
-  {glyph}
+  <rect width="200" height="100" fill="url(#bg)"/>
+  <rect width="200" height="100" fill="url(#glow)"/>
+  <g transform="translate(100 50) scale(0.5) translate(-50 -50)">{glyph}</g>
 </svg>
 '''
 

@@ -4,7 +4,7 @@ import { appRoot, del, get, post, store } from "../api.js";
 import { navigate } from "../router.js";
 import { confirmModal, toast } from "../ui.js";
 import {
-  emptyState, esc, formatDate, formatMoney, setBusy, skeletonRows, statusPill, val,
+  emptyState, esc, formatDate, formatMoney, icon, setBusy, skeletonRows, statusPill, val,
 } from "../utils.js";
 
 export async function renderDashboard() {
@@ -26,7 +26,7 @@ export async function renderDashboard() {
 
     if (!events.length) {
       box.innerHTML = emptyState({
-        icon: "🎪",
+        icon: "sparkles",
         message: "You have not created an event yet.",
         actionLabel: "Create your first event",
         action: "navigate('createEvent')",
@@ -37,7 +37,7 @@ export async function renderDashboard() {
     box.innerHTML = events.map(eventRow).join("");
     wireRowActions();
   } catch {
-    box.innerHTML = emptyState({ icon: "⚠️", message: "Could not load your events." });
+    box.innerHTML = emptyState({ icon: "warning", message: "Could not load your events." });
   }
 }
 
@@ -53,9 +53,9 @@ function eventRow(event) {
           ${statusPill(event.status)}
         </div>
         <div class="meta">
-          <span class="tag">📅 ${formatDate(event.date)}</span>
-          <span class="tag">📍 ${esc(event.location)}</span>
-          <span class="tag">🎟️ ${event.tickets} left</span>
+          <span class="tag">${icon("calendar", 13)} ${formatDate(event.date)}</span>
+          <span class="tag">${icon("pin", 13)} ${esc(event.location)}</span>
+          <span class="tag">${icon("ticket", 13)} ${event.tickets} left</span>
         </div>
         <p class="muted" style="font-size:0.8rem;margin-top:0.6rem">
           Net to recover <strong style="color:var(--gold)">${formatMoney(budget.net_expense || 0)}</strong>
@@ -112,13 +112,13 @@ export async function renderPublish(id) {
   try {
     event = await get(`/api/events/${id}`);
   } catch {
-    appRoot.innerHTML = emptyState({ icon: "🚫", message: "Event not found." });
+    appRoot.innerHTML = emptyState({ icon: "ban", message: "Event not found." });
     return;
   }
 
   if (event.status === "published") {
     appRoot.innerHTML = emptyState({
-      icon: "✅",
+      icon: "check",
       message: "This event is already live.",
       actionLabel: "View event",
       action: `navigate('detail',${id})`,
@@ -129,7 +129,7 @@ export async function renderPublish(id) {
   const fee = 50000;
 
   appRoot.innerHTML = `
-    <button class="back-btn" id="pub-back">← Back to dashboard</button>
+    <button class="back-btn" id="pub-back">${icon("chevronLeft", 15)} Back to dashboard</button>
     <div class="auth-wrap" style="margin-top:0">
       <h1 class="display" style="font-size:1.6rem">Publish your event</h1>
       <p class="sub">
@@ -147,8 +147,8 @@ export async function renderPublish(id) {
         </div>
 
         <div class="pay-methods" id="pub-methods">
-          <button class="active" data-method="card" id="pub-card">💳 Card</button>
-          <button data-method="bkash" id="pub-bkash">📱 bKash</button>
+          <button class="active" data-method="card" id="pub-card">${icon("card", 15)} Card</button>
+          <button data-method="bkash" id="pub-bkash">${icon("phone", 15)} bKash</button>
         </div>
 
         <div id="err" class="error"></div>

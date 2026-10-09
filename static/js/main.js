@@ -55,6 +55,11 @@ async function boot() {
   } catch {
     store.user = null;
   }
+
+  // /api/me clears the session (and its cookie) when the session points at a
+  // user row that no longer exists. that kills the csrf token we fetched
+  // above, so re-sync before anything tries to write.
+  await initCsrf();
   updateNav();
 
   readHash();
