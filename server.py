@@ -1,13 +1,3 @@
-"""
-Event Khujo — development entry point.
-
-    uv run python server.py
-
-For production, point a WSGI server at `app:create_app()`:
-
-    gunicorn "app:create_app()" --bind 0.0.0.0:9000
-"""
-
 import os
 
 from app import create_app
