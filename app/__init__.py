@@ -40,13 +40,13 @@ def create_app(config: dict | None = None) -> Flask:
         # cloud first. if atlas has data it wins, so replace local before anything reads.
         sync.configure(app)
         if sync.enabled():
-            sync.pull_all(db.get_db())
+            sync.pull(db.get_db())
 
         db.seed_reference_data()
 
         # empty cloud on first run -> push what we have
         if sync.enabled():
-            sync.push_tables(db.get_db(), sync.SYNCED_TABLES)
+            sync.update_all(db.get_db())
 
     # default thumbs, only rewritten when the definition changes
     from . import thumbs

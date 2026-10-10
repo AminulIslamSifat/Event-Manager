@@ -9,7 +9,8 @@ from flask import Blueprint, jsonify, request, session
 
 from ..auth import check_csrf, current_user
 from ..db import get_db
-from ..pricing import BudgetInput, calculate_budget, suggested_tier_prices
+from .. import sync
+from ..pricing import calculate_budget, suggested_tier_prices
 from ..serializers import artist_rows, event_to_dict, tier_rows
 from ..uploads import save_image
 
@@ -108,21 +109,18 @@ def _budget_from_payload(d: dict) -> dict:
         for t in (d.get("tiers") or [])
     ]
 
-    result = calculate_budget(
-        BudgetInput(
-            venue_fee=float(d.get("venue_fee", 0) or 0),
-            artist_fees=artist_fees,
-            organizer_costs=float(d.get("organizer_costs", 0) or 0),
-            admin_margin=float(d.get("admin_margin", 0) or 0),
-            sponsorship=float(d.get("sponsorship", 0) or 0),
-            tiers=tiers,
-            # only fall back to capacity when no pool has been set at all
-            ticket_pool=tickets or capacity,
-            venue_capacity=capacity,
-            ticket_price=float(d.get("price", 0) or 0),
-        )
-    )
-    return result.as_dict()
+    # only fall back to capacity when no pool has been set at all
+    return calculate_budget({
+        "venue_fee": float(d.get("venue_fee", 0) or 0),
+        "artist_fees": artist_fees,
+        "organizer_costs": float(d.get("organizer_costs", 0) or 0),
+        "admin_margin": float(d.get("admin_margin", 0) or 0),
+        "sponsorship": float(d.get("sponsorship", 0) or 0),
+        "tiers": tiers,
+        "ticket_pool": tickets or capacity,
+        "venue_capacity": capacity,
+        "ticket_price": float(d.get("price", 0) or 0),
+    })
 
 
 def _save_artists(db, event_id: int, artist_ids: list[int]) -> float:
@@ -303,7 +301,7 @@ def create_event():
     db.execute("UPDATE events SET artists_total=? WHERE id=?", (artist_total, event_id))
     _save_tiers(db, event_id, d.get("tiers") or [])
 
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True, "id": event_id, "status": "pending_payment"})
 
 
@@ -352,7 +350,7 @@ def update_event(event_id: int):
     if "tiers" in d:
         _save_tiers(db, event_id, d.get("tiers") or [])
 
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})
 
 
@@ -372,7 +370,7 @@ def delete_event(event_id: int):
     db.execute("DELETE FROM event_artists WHERE event_id=?", (event_id,))
     db.execute("DELETE FROM ticket_tiers WHERE event_id=?", (event_id,))
     db.execute("DELETE FROM events WHERE id=?", (event_id,))
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})
 
 
@@ -413,7 +411,7 @@ def publish_event(event_id: int):
         "UPDATE events SET status='published', platform_fee_paid=1 WHERE id=?",
         (event_id,),
     )
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True, "transaction_id": txn, "platform_fee": platform_fee})
 
 

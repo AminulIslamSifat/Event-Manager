@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request, session
 
 from ..auth import check_csrf, current_user, hash_password, login_required
 from ..db import get_db
+from .. import sync
 
 bp = Blueprint("auth", __name__, url_prefix="/api")
 
@@ -83,7 +84,7 @@ def register():
                 (d.get("bio") or "").strip(),
             ),
         )
-        db.commit()
+        sync.commit(db)
     except sqlite3.IntegrityError:
         return jsonify({"error": "That username is already taken"}), 400
 
@@ -195,7 +196,7 @@ def update_profile():
             session["user_id"],
         ),
     )
-    db.commit()
+    sync.commit(db)
 
     row = db.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
     return jsonify({"ok": True, "user": _public_user(row)})
@@ -226,5 +227,5 @@ def change_password():
         "UPDATE users SET password=? WHERE id=?",
         (hash_password(new_password), session["user_id"]),
     )
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})

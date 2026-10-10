@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request, session
 
 from ..auth import check_csrf, login_required
 from ..db import get_db
+from .. import sync
 
 bp = Blueprint("bookings", __name__, url_prefix="/api")
 
@@ -101,7 +102,7 @@ def book():
                VALUES (?,?,?,'confirmed','free','FREE-000',?,?)""",
             (session["user_id"], event_id, quantity, tier_id, tier_name),
         )
-        db.commit()
+        sync.commit(db)
 
         booking_id = db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         return jsonify({
@@ -120,7 +121,7 @@ def book():
            VALUES (?,?,?,'pending_payment',?,?)""",
         (session["user_id"], event_id, quantity, tier_id, tier_name),
     )
-    db.commit()
+    sync.commit(db)
 
     booking_id = db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
     return jsonify({
@@ -175,12 +176,12 @@ def pay():
         db.execute("UPDATE bookings SET status='failed', payment_method=?, transaction_id=? WHERE id=?",
                    (method, txn, booking_id))
         _release_tickets(db, booking)
-        db.commit()
+        sync.commit(db)
         return jsonify({"error": "payment declined by bank (demo: cards ending in 0000 fail)"}), 402
 
     db.execute("UPDATE bookings SET status='confirmed', payment_method=?, transaction_id=? WHERE id=?",
                (method, txn, booking_id))
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True, "transaction_id": txn, "method": method})
 
 
@@ -218,5 +219,5 @@ def cancel_booking(booking_id: int):
 
     db.execute("UPDATE bookings SET status='cancelled' WHERE id=?", (booking_id,))
     _release_tickets(db, booking)
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})

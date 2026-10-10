@@ -10,13 +10,10 @@ from . import sync
 
 def get_db() -> sqlite3.Connection:
     # request-scoped conn, opened on demand.
-    # SyncConnection mirrors touched tables to mongo on commit, but callers
-    # just see a normal sqlite3.Connection.
+    # callers get a plain sqlite3.Connection. cloud mirroring is explicit --
+    # write routes call sync.commit(db) instead of db.commit().
     if "db" not in g:
-        g.db = sqlite3.connect(
-            current_app.config["DATABASE"],
-            factory=sync.SyncConnection,
-        )
+        g.db = sqlite3.connect(current_app.config["DATABASE"])
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
@@ -198,7 +195,7 @@ def init_db() -> None:
     # defaults
     db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('platform_fee', ?)",
                (str(current_app.config["PLATFORM_FEE"]),))
-    db.commit()
+    sync.commit(db)
 
 
 # reference data. seeded once, admins edit it after that.
@@ -259,4 +256,4 @@ def seed_reference_data() -> None:
             ARTISTS,
         )
 
-    db.commit()
+    sync.commit(db)

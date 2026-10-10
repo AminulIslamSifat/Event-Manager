@@ -4,6 +4,7 @@ from flask import Blueprint, Response, jsonify, request
 
 from ..auth import admin_required, check_csrf
 from ..db import get_db
+from .. import sync
 
 bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
@@ -72,7 +73,7 @@ def update_settings():
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (key, str(value)),
         )
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})
 
 

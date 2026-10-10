@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from ..auth import admin_required, check_csrf
 from ..db import get_db
+from .. import sync
 
 bp = Blueprint("venues", __name__, url_prefix="/api/venues")
 
@@ -45,7 +46,7 @@ def create_venue():
             "INSERT INTO venues (name, address, capacity, fee, notes) VALUES (?,?,?,?,?)",
             (name, address, capacity, fee, notes),
         )
-        db.commit()
+        sync.commit(db)
     except Exception:
         return jsonify({"error": "a venue with that name already exists"}), 400
 
@@ -72,7 +73,7 @@ def update_venue(venue_id: int):
         (name, address, capacity, fee, notes,
          1 if d.get("active", True) else 0, venue_id),
     )
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})
 
 
@@ -86,9 +87,9 @@ def delete_venue(venue_id: int):
     # soft delete if an event points at it, so old budgets survive
     if db.execute("SELECT 1 FROM events WHERE venue_id=? LIMIT 1", (venue_id,)).fetchone():
         db.execute("UPDATE venues SET active=0 WHERE id=?", (venue_id,))
-        db.commit()
+        sync.commit(db)
         return jsonify({"ok": True, "soft_deleted": True})
 
     db.execute("DELETE FROM venues WHERE id=?", (venue_id,))
-    db.commit()
+    sync.commit(db)
     return jsonify({"ok": True})

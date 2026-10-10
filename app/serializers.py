@@ -57,20 +57,17 @@ def budget_for(
         for t in (tiers or [])
     ]
 
-    result = pricing.calculate_budget(
-        pricing.BudgetInput(
-            venue_fee=float(get("venue_fee", 0)),
-            artist_fees=artist_fees,
-            organizer_costs=float(get("organizer_costs", 0)),
-            admin_margin=float(get("admin_margin", 0)),
-            sponsorship=float(get("sponsorship", 0)),
-            tiers=tier_pairs,
-            ticket_pool=tickets or capacity,
-            venue_capacity=capacity,
-            ticket_price=float(get("price", 0)),
-        )
-    )
-    return result.as_dict()
+    return pricing.calculate_budget({
+        "venue_fee": float(get("venue_fee", 0)),
+        "artist_fees": artist_fees,
+        "organizer_costs": float(get("organizer_costs", 0)),
+        "admin_margin": float(get("admin_margin", 0)),
+        "sponsorship": float(get("sponsorship", 0)),
+        "tiers": tier_pairs,
+        "ticket_pool": tickets or capacity,
+        "venue_capacity": capacity,
+        "ticket_price": float(get("price", 0)),
+    })
 
 
 def event_to_dict(row: sqlite3.Row, db=None, *, detailed: bool = False) -> dict:
