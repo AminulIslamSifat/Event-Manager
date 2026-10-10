@@ -3,7 +3,7 @@
 import hashlib
 from functools import wraps
 
-from flask import current_app, jsonify, session, request
+from flask import current_app, jsonify, session
 
 
 def hash_password(password: str) -> str:
@@ -41,7 +41,3 @@ def admin_required(fn):
     return wrapper
 
 
-def check_csrf() -> bool:
-    # check the X-CSRF-Token header against the session
-    token = request.headers.get("X-CSRF-Token", "")
-    return bool(token) and token == session.get("csrf")

@@ -1,9 +1,8 @@
 // api client + global state.
-// every call goes through api() so csrf headers and error handling live in one spot.
+// every call goes through api() so error handling lives in one spot.
 
 export const store = {
   user: null,
-  csrf: "",
   view: "events",
   param: null,
   lastBooking: null,
@@ -22,34 +21,17 @@ export const store = {
 export const appRoot = document.getElementById("app");
 export const navRoot = document.getElementById("nav-links");
 
-// grab a csrf token
-export async function initCsrf() {
-  const res = await fetch("/api/csrf");
-  store.csrf = (await res.json()).token;
-}
-
 // api request. throws with the server's message on any non-2xx.
-//
-// the csrf token is tied to the session cookie, and the server can drop that
-// cookie out from under us (logging out, or /api/me clearing a session whose
-// user row is gone). when that happens the token we hold is dead and every
-// write fails forever. so: on a csrf rejection, re-sync once and replay.
-export async function api(path, options = {}, _retried = false) {
+export async function api(path, options = {}) {
   const res = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": store.csrf,
       ...(options.headers || {}),
     },
   });
 
   const data = await res.json().catch(() => ({}));
-
-  if (res.status === 403 && data.error === "invalid csrf token" && !_retried) {
-    await initCsrf();
-    return api(path, options, true);
-  }
 
   if (!res.ok) throw new Error(data.error || "Something went wrong");
   return data;

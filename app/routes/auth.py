@@ -1,12 +1,11 @@
-# auth routes: csrf, register, login, logout, profile
+# auth routes: register, login, logout, profile
 
 import re
-import secrets
 import sqlite3
 
 from flask import Blueprint, jsonify, request, session
 
-from ..auth import check_csrf, current_user, hash_password, login_required
+from ..auth import current_user, hash_password, login_required
 from ..db import get_db
 from .. import sync
 
@@ -14,13 +13,6 @@ bp = Blueprint("auth", __name__, url_prefix="/api")
 
 # deliberately loose: something@something.something
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-@bp.get("/csrf")
-def csrf_token():
-    if "csrf" not in session:
-        session["csrf"] = secrets.token_hex(16)
-    return jsonify({"token": session["csrf"]})
 
 
 # registration
@@ -53,8 +45,6 @@ def validate_signup(d: dict) -> str | None:
 
 @bp.post("/register")
 def register():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     error = validate_signup(d)
@@ -95,8 +85,6 @@ def register():
 
 @bp.post("/login")
 def login():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     username = (d.get("username") or "").strip()
@@ -163,8 +151,6 @@ def _public_user(row) -> dict:
 @bp.put("/profile")
 @login_required
 def update_profile():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     full_name = (d.get("full_name") or "").strip()
@@ -205,8 +191,6 @@ def update_profile():
 @bp.post("/change-password")
 @login_required
 def change_password():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     old_password = d.get("old_password") or ""

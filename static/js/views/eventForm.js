@@ -280,7 +280,6 @@ function wireImageUpload() {
 
     const body = new FormData();
     body.append("image", file);
-    body.append("csrf_token", store.csrf);
 
     try {
       const res = await fetch("/api/events/upload-image", { method: "POST", body });

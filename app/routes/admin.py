@@ -2,7 +2,7 @@
 
 from flask import Blueprint, Response, jsonify, request
 
-from ..auth import admin_required, check_csrf
+from ..auth import admin_required
 from ..db import get_db
 from .. import sync
 
@@ -63,8 +63,6 @@ def get_settings():
 @bp.put("/settings")
 @admin_required
 def update_settings():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     for key, value in (request.json or {}).items():

@@ -1,6 +1,6 @@
 // entry point. wires the router, registers views, restores the session.
 
-import { appRoot, get, initCsrf, store } from "./api.js";
+import { appRoot, get, store } from "./api.js";
 import { initRouter, navigate, readHash, render, route } from "./router.js";
 import { setupHeaderSearch, updateNav } from "./nav.js";
 
@@ -48,7 +48,6 @@ async function boot() {
   document.getElementById("brand").onclick = () => navigate("events");
   setupHeaderSearch({ onApply: loadEvents });
 
-  await initCsrf();
   try {
     const me = await get("/api/me");
     store.user = me.logged_in ? me : null;
@@ -56,10 +55,6 @@ async function boot() {
     store.user = null;
   }
 
-  // /api/me clears the session (and its cookie) when the session points at a
-  // user row that no longer exists. that kills the csrf token we fetched
-  // above, so re-sync before anything tries to write.
-  await initCsrf();
   updateNav();
 
   readHash();

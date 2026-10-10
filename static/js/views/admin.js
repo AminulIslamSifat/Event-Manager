@@ -102,9 +102,7 @@ async function exportCsv() {
   setBusy(btn, true, "Exporting…");
 
   try {
-    const res = await fetch("/api/admin/export-bookings", {
-      headers: { "X-CSRF-Token": store.csrf },
-    });
+    const res = await fetch("/api/admin/export-bookings");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

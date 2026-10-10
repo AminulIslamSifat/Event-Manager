@@ -5,9 +5,9 @@
 #  - only published show in the public list
 #  - only owner or admin can edit/delete
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
 
-from ..auth import check_csrf, current_user
+from ..auth import current_user
 from ..db import get_db
 from .. import sync
 from ..pricing import calculate_budget, suggested_tier_prices
@@ -260,8 +260,6 @@ def get_event(event_id: int):
 @bp.post("")
 def create_event():
     # any logged-in user, lands as a draft until the fee is paid
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     user = current_user()
     if not user:
@@ -307,8 +305,6 @@ def create_event():
 
 @bp.put("/<int:event_id>")
 def update_event(event_id: int):
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     row = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
@@ -356,8 +352,6 @@ def update_event(event_id: int):
 
 @bp.delete("/<int:event_id>")
 def delete_event(event_id: int):
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     row = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
@@ -380,8 +374,6 @@ def delete_event(event_id: int):
 def publish_event(event_id: int):
     # pay the fee, go live. payment is a stub -- swap the marked block for a
     # real gateway and the rest of this flow doesn't change.
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     row = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
@@ -431,15 +423,9 @@ def get_lineup(event_id: int):
 
 @bp.post("/upload-image")
 def upload_image():
-    # multipart, so it can't use the JSON CSRF header check. session required
-    # instead, and the token rides in the form body as `csrf_token`.
     user = current_user()
     if not user:
         return jsonify({"error": "sign in to upload an image"}), 401
-
-    token = request.form.get("csrf_token", "")
-    if not token or token != session.get("csrf"):
-        return jsonify({"error": "invalid csrf token"}), 403
 
     try:
         url = save_image(request.files.get("image"))

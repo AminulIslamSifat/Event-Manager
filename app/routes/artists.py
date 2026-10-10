@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-from ..auth import admin_required, check_csrf
+from ..auth import admin_required
 from ..db import get_db
 from .. import sync
 
@@ -31,8 +31,6 @@ def list_artists():
 @bp.post("")
 @admin_required
 def create_artist():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     name, genre, fee = _payload(request.json or {})
     if not name:
@@ -54,8 +52,6 @@ def create_artist():
 @bp.put("/<int:artist_id>")
 @admin_required
 def update_artist(artist_id: int):
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     name, genre, fee = _payload(d)
@@ -75,8 +71,6 @@ def update_artist(artist_id: int):
 @bp.delete("/<int:artist_id>")
 @admin_required
 def delete_artist(artist_id: int):
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     if db.execute("SELECT 1 FROM event_artists WHERE artist_id=? LIMIT 1", (artist_id,)).fetchone():

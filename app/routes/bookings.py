@@ -8,7 +8,7 @@
 
 from flask import Blueprint, jsonify, request, session
 
-from ..auth import check_csrf, login_required
+from ..auth import login_required
 from ..db import get_db
 from .. import sync
 
@@ -44,8 +44,6 @@ def _reserve(db, event_id: int, tier_id, quantity: int) -> bool:
 @bp.post("/book")
 @login_required
 def book():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     quantity = int(d.get("quantity", 0) or 0)
@@ -144,8 +142,6 @@ def _release_tickets(db, booking) -> None:
 @bp.post("/pay")
 @login_required
 def pay():
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     d = request.json or {}
     booking_id = int(d.get("booking_id", 0) or 0)
@@ -205,8 +201,6 @@ def my_bookings():
 @bp.delete("/bookings/<int:booking_id>")
 @login_required
 def cancel_booking(booking_id: int):
-    if not check_csrf():
-        return jsonify({"error": "invalid csrf token"}), 403
 
     db = get_db()
     booking = db.execute(
