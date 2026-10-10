@@ -73,7 +73,7 @@ def update_settings():
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (key, str(value)),
         )
-    sync.commit(db)
+    sync.commit(db, "settings")
     return jsonify({"ok": True})
 
 

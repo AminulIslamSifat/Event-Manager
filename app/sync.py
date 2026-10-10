@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 
 # parents before children on a full push
 SYNCED_TABLES = (
@@ -33,6 +33,14 @@ def enabled() -> bool:
     return _mongo is not None
 
 
+def commit(db, *tables) -> None:
+    # call instead of db.commit(). name the tables you touched:
+    #   sync.commit(db, "events", "ticket_tiers")
+    db.commit()
+    if _mongo is not None and tables:
+        update_all(db, tables)
+
+
 def update(table: str, doc: dict) -> None:
     # upsert one row
     if _mongo is None:
@@ -41,22 +49,19 @@ def update(table: str, doc: dict) -> None:
     _mongo[table].update_one({key: doc[key]}, {"$set": doc}, upsert=True)
 
 
-def update_all(db) -> None:
-    # push every synced table, upserting each row and pruning deletes
+def update_all(db, tables) -> None:
+    # push the named tables. one bulk round-trip each, then prune deletes.
     if _mongo is None:
         return
-    for table in SYNCED_TABLES:
+    for table in tables:
         key = KEY.get(table, "id")
         rows = _rows(db, table)
-        for row in rows:
-            update(table, row)
+        if rows:
+            _mongo[table].bulk_write([
+                UpdateOne({key: r[key]}, {"$set": r}, upsert=True) for r in rows
+            ], ordered=False)
+        # drop anything the local db no longer has
         _mongo[table].delete_many({key: {"$nin": [r[key] for r in rows]}})
-
-
-def commit(db) -> None:
-    # call instead of db.commit() -- writes local, then mirrors
-    db.commit()
-    update_all(db)
 
 
 def pull(db) -> None:

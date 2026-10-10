@@ -1,127 +1,33 @@
-# pricing math. no flask/db imports so it stays testable on its own.
-#
-#   total expenses = venue + artists + organizer + margin
-#   net            = total - sponsorship
-#   price to break even = net / seats
-#   revenue        = SUM(tier price x tier seats)
-#   profit         = revenue - net
-#
-# two traps this file exists to avoid:
-#   1. the divisor is the SEAT POOL (what is on sale), never the venue's
-#      physical capacity. those are different numbers.
-#   2. revenue is the sum over tiers, not cheapest_price x seats. using the
-#      cheapest price for every seat silently understates a mixed-price event.
+# budget math. plain functions, no flask/db imports so it's testable on its own.
 
-from typing import TypedDict
+def calculate_budget(data):
+    venue_fee = float(data.get("venue_fee", 0) or 0)
+    artist_fees = [float(f) for f in (data.get("artist_fees") or [])]
+    organizer_costs = float(data.get("organizer_costs", 0) or 0)
+    admin_margin = float(data.get("admin_margin", 0) or 0)
+    sponsorship = float(data.get("sponsorship", 0) or 0)
 
+    pool = max(0, int(data.get("ticket_pool", 0) or 0))      # seats on sale -- the divisor
+    capacity = max(0, int(data.get("venue_capacity", 0) or 0))
+    price = float(data.get("ticket_price", 0) or 0)
 
-# functional TypedDict syntax -- same static typing, no class statement.
-# inputs for one event. all keys optional so callers can pass partial dicts.
-BudgetInput = TypedDict("BudgetInput", {
-    "venue_fee": float,
-    "artist_fees": list[float],
-    "organizer_costs": float,
-    "admin_margin": float,
-    "sponsorship": float,
-    # (price, quantity) per tier. this is what revenue is actually computed
-    # from -- pass it whenever tiers exist.
-    "tiers": list[tuple[float, int]],
-    # how many seats are actually on sale. THIS is the divisor.
-    "ticket_pool": int,
-    # the venue's physical limit. validation only -- never used for pricing.
-    "venue_capacity": int,
-    # fallback unit price, used only when no tiers are supplied.
-    "ticket_price": float,
-}, total=False)
+    artists_total = round(sum(artist_fees), 2)
+    total_expenses = round(venue_fee + artists_total + organizer_costs + admin_margin, 2)
+    net_expense = round(max(0.0, total_expenses - sponsorship), 2)
+    base_price = round(net_expense / pool, 2) if pool else 0.0
 
-
-# result shape -- a plain dict that drops straight into jsonify.
-BudgetResult = TypedDict("BudgetResult", {
-    # costs
-    "venue_fee": float,
-    "artists_total": float,
-    "organizer_costs": float,
-    "admin_margin": float,
-    "total_expenses": float,
-    "sponsorship": float,
-    "net_expense": float,
-    # capacity
-    "ticket_pool": int,
-    "venue_capacity": int,
-    "ticket_price": float,
-    "avg_ticket_price": float,
-    # break-even
-    "base_ticket_price": float,   # net / seats -- what you MUST charge
-    "break_even_tickets": int,    # ceil(net / avg price)
-    # sell-out projection
-    "projected_revenue": float,
-    "profit": float,
-    "margin_pct": float,          # profit / revenue
-    "roi_pct": float,             # profit / net expense
-    "shortfall": float,           # max(0, net - revenue)
-    # kept so existing callers keep working; mirrors ticket_pool
-    "capacity": int,
-})
-
-
-# 2dp, so float noise never reaches the ui
-def _money(value: float) -> float:
-    return round(float(value or 0), 2)
-
-
-def _pct(numerator: float, denominator: float) -> float:
-    if not denominator:
-        return 0.0
-    return round((numerator / denominator) * 100, 1)
-
-
-def calculate_budget(data: BudgetInput, *, safety_buffer: float = 0.0) -> BudgetResult:
-    # safety_buffer = extra fraction on top of expenses (0.05 = 5% contingency),
-    # applied before sponsorship comes off
-    venue_fee = _money(data.get("venue_fee"))
-    artists_total = _money(sum(data.get("artist_fees") or []))
-    organizer_costs = _money(data.get("organizer_costs"))
-    admin_margin = _money(data.get("admin_margin"))
-    sponsorship = _money(data.get("sponsorship"))
-
-    pool = max(0, int(data.get("ticket_pool") or 0))
-    venue_capacity = max(0, int(data.get("venue_capacity") or 0))
-    fallback_price = _money(data.get("ticket_price"))
-
-    subtotal = venue_fee + artists_total + organizer_costs + admin_margin
-    buffer_amount = subtotal * max(0.0, safety_buffer)
-    total_expenses = _money(subtotal + buffer_amount)
-
-    # sponsorship can't push net negative
-    net_expense = _money(max(0.0, total_expenses - sponsorship))
-
-    # the price that covers costs if every seat sells
-    base_ticket_price = _money(net_expense / pool) if pool > 0 else 0.0
-
-    # ---- revenue ----
-    # sum over the real tier mix. the old version used cheapest_price x pool,
-    # which is only correct when every seat costs the same -- on a mixed event
-    # it understated sell-out revenue and could report a loss on a profitable
-    # lineup (or vice versa).
-    tiers = [(float(p or 0), int(q or 0)) for p, q in (data.get("tiers") or [])]
-    tiers = [(p, q) for p, q in tiers if q > 0]
-
+    # revenue comes from the real tier mix, not cheapest_price * seats
+    tiers = [(float(p or 0), int(q or 0)) for p, q in (data.get("tiers") or []) if int(q or 0) > 0]
     if tiers:
-        projected_revenue = _money(sum(p * q for p, q in tiers))
-        tier_seats = sum(q for _, q in tiers)
-        avg_ticket_price = _money(projected_revenue / tier_seats) if tier_seats else 0.0
+        revenue = round(sum(p * q for p, q in tiers), 2)
+        seats = sum(q for _, q in tiers)
+        avg_price = round(revenue / seats, 2) if seats else 0.0
     else:
-        projected_revenue = _money(fallback_price * pool)
-        avg_ticket_price = fallback_price
+        revenue = round(price * pool, 2)
+        avg_price = price
 
-    # how many seats at the average price to cover costs
-    if avg_ticket_price > 0:
-        break_even_tickets = int(-(-net_expense // avg_ticket_price))  # ceil division
-    else:
-        break_even_tickets = 0
-
-    profit = _money(projected_revenue - net_expense)
-    shortfall = _money(max(0.0, net_expense - projected_revenue))
+    profit = round(revenue - net_expense, 2)
+    break_even = int(-(-net_expense // avg_price)) if avg_price else 0
 
     return {
         "venue_fee": venue_fee,
@@ -132,25 +38,20 @@ def calculate_budget(data: BudgetInput, *, safety_buffer: float = 0.0) -> Budget
         "sponsorship": sponsorship,
         "net_expense": net_expense,
         "ticket_pool": pool,
-        "venue_capacity": venue_capacity,
-        "ticket_price": fallback_price,
-        "avg_ticket_price": avg_ticket_price,
-        "base_ticket_price": base_ticket_price,
-        "break_even_tickets": break_even_tickets,
-        "projected_revenue": projected_revenue,
+        "venue_capacity": capacity,
+        "ticket_price": price,
+        "avg_ticket_price": avg_price,
+        "base_ticket_price": base_price,
+        "break_even_tickets": break_even,
+        "projected_revenue": revenue,
         "profit": profit,
-        "margin_pct": _pct(profit, projected_revenue),
-        "roi_pct": _pct(profit, net_expense),
-        "shortfall": shortfall,
+        "margin_pct": round(profit / revenue * 100, 1) if revenue else 0.0,
+        "roi_pct": round(profit / net_expense * 100, 1) if net_expense else 0.0,
+        "shortfall": round(max(0.0, net_expense - revenue), 2),
         "capacity": pool,
     }
 
 
-def suggested_tier_prices(base_price: float) -> dict[str, float]:
-    # starting points only. vip pays more, student pays less. organiser overrides all of it.
-    base = _money(base_price)
-    return {
-        "base": base,
-        "vip": _money(base * 2),
-        "student": _money(base * 0.6),
-    }
+def suggested_tier_prices(base_price):
+    base = round(float(base_price or 0), 2)
+    return {"base": base, "vip": round(base * 2, 2), "student": round(base * 0.6, 2)}

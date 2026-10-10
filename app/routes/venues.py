@@ -46,7 +46,7 @@ def create_venue():
             "INSERT INTO venues (name, address, capacity, fee, notes) VALUES (?,?,?,?,?)",
             (name, address, capacity, fee, notes),
         )
-        sync.commit(db)
+        sync.commit(db, "venues")
     except Exception:
         return jsonify({"error": "a venue with that name already exists"}), 400
 
@@ -73,7 +73,7 @@ def update_venue(venue_id: int):
         (name, address, capacity, fee, notes,
          1 if d.get("active", True) else 0, venue_id),
     )
-    sync.commit(db)
+    sync.commit(db, "venues")
     return jsonify({"ok": True})
 
 
@@ -87,9 +87,9 @@ def delete_venue(venue_id: int):
     # soft delete if an event points at it, so old budgets survive
     if db.execute("SELECT 1 FROM events WHERE venue_id=? LIMIT 1", (venue_id,)).fetchone():
         db.execute("UPDATE venues SET active=0 WHERE id=?", (venue_id,))
-        sync.commit(db)
+        sync.commit(db, "venues")
         return jsonify({"ok": True, "soft_deleted": True})
 
     db.execute("DELETE FROM venues WHERE id=?", (venue_id,))
-    sync.commit(db)
+    sync.commit(db, "venues")
     return jsonify({"ok": True})

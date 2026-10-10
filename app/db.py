@@ -195,7 +195,7 @@ def init_db() -> None:
     # defaults
     db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('platform_fee', ?)",
                (str(current_app.config["PLATFORM_FEE"]),))
-    sync.commit(db)
+    sync.commit(db, "settings", "users")
 
 
 # reference data. seeded once, admins edit it after that.
@@ -256,4 +256,4 @@ def seed_reference_data() -> None:
             ARTISTS,
         )
 
-    sync.commit(db)
+    sync.commit(db, "venues", "artists")

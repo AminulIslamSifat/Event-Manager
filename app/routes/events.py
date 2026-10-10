@@ -301,7 +301,7 @@ def create_event():
     db.execute("UPDATE events SET artists_total=? WHERE id=?", (artist_total, event_id))
     _save_tiers(db, event_id, d.get("tiers") or [])
 
-    sync.commit(db)
+    sync.commit(db, "events", "event_artists", "ticket_tiers")
     return jsonify({"ok": True, "id": event_id, "status": "pending_payment"})
 
 
@@ -350,7 +350,7 @@ def update_event(event_id: int):
     if "tiers" in d:
         _save_tiers(db, event_id, d.get("tiers") or [])
 
-    sync.commit(db)
+    sync.commit(db, "events", "event_artists", "ticket_tiers")
     return jsonify({"ok": True})
 
 
@@ -370,7 +370,7 @@ def delete_event(event_id: int):
     db.execute("DELETE FROM event_artists WHERE event_id=?", (event_id,))
     db.execute("DELETE FROM ticket_tiers WHERE event_id=?", (event_id,))
     db.execute("DELETE FROM events WHERE id=?", (event_id,))
-    sync.commit(db)
+    sync.commit(db, "events", "event_artists", "ticket_tiers", "bookings")
     return jsonify({"ok": True})
 
 
@@ -411,7 +411,7 @@ def publish_event(event_id: int):
         "UPDATE events SET status='published', platform_fee_paid=1 WHERE id=?",
         (event_id,),
     )
-    sync.commit(db)
+    sync.commit(db, "events")
     return jsonify({"ok": True, "transaction_id": txn, "platform_fee": platform_fee})
 
 

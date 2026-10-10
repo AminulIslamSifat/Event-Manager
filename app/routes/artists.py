@@ -44,7 +44,7 @@ def create_artist():
             "INSERT INTO artists (name, genre, fee) VALUES (?,?,?)",
             (name, genre, fee),
         )
-        sync.commit(db)
+        sync.commit(db, "artists")
     except Exception:
         return jsonify({"error": "an artist with that name already exists"}), 400
 
@@ -68,7 +68,7 @@ def update_artist(artist_id: int):
         "UPDATE artists SET name=?, genre=?, fee=?, active=? WHERE id=?",
         (name, genre, fee, 1 if d.get("active", True) else 0, artist_id),
     )
-    sync.commit(db)
+    sync.commit(db, "artists")
     return jsonify({"ok": True})
 
 
@@ -81,9 +81,9 @@ def delete_artist(artist_id: int):
     db = get_db()
     if db.execute("SELECT 1 FROM event_artists WHERE artist_id=? LIMIT 1", (artist_id,)).fetchone():
         db.execute("UPDATE artists SET active=0 WHERE id=?", (artist_id,))
-        sync.commit(db)
+        sync.commit(db, "artists")
         return jsonify({"ok": True, "soft_deleted": True})
 
     db.execute("DELETE FROM artists WHERE id=?", (artist_id,))
-    sync.commit(db)
+    sync.commit(db, "artists")
     return jsonify({"ok": True})

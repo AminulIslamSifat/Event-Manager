@@ -46,7 +46,7 @@ def create_app(config: dict | None = None) -> Flask:
 
         # empty cloud on first run -> push what we have
         if sync.enabled():
-            sync.update_all(db.get_db())
+            sync.update_all(db.get_db(), sync.SYNCED_TABLES)
 
     # default thumbs, only rewritten when the definition changes
     from . import thumbs
